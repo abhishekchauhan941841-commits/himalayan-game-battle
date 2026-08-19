@@ -2,270 +2,68 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Himalayan Game Battle 🎴</title>
-  <link rel="stylesheet" href="/style.css">
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Montserrat:wght@400;600;700;800;900&family=Yatra+One&display=swap" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Himalayan Game Battle - Chudapatti</title>
+  <link rel="stylesheet" href="style.css">
   <script src="/socket.io/socket.io.js"></script>
 </head>
 <body>
+  <div class="game-container">
+    <header>
+      <h1>🏔️ Himalayan Game Battle (Chudapatti)</h1>
+      <div id="game-status">Enter Room & Name to Begin</div>
+    </header>
 
-  <!-- TOP NAVIGATION BAR -->
-  <div class="top-nav-bar">
-    <button class="icon-toggle-btn" onclick="toggleLogDrawer()" title="Match History">📜</button>
-    <div class="lang-switcher-bar">
-      <button class="lang-btn active" id="lang-en" onclick="setLanguage('en')">EN</button>
-      <button class="lang-btn" id="lang-hi" onclick="setLanguage('hi')">हिन्दी</button>
+    <div id="auth-panel" class="panel">
+      <input type="text" id="username" placeholder="Your Name" />
+      <input type="text" id="room-id" placeholder="Room ID (e.g. room101)" />
+      <button id="btn-join">Join Room</button>
+      <button id="btn-start" style="display:none;">Start Game</button>
     </div>
-  </div>
 
-  <!-- MATCH HISTORY DRAWER -->
-  <div id="logDrawer" class="log-drawer">
-    <div class="drawer-header">
-      <h3 data-i18n="matchLogTitle">Match Action Log</h3>
-      <button class="drawer-close-btn" onclick="toggleLogDrawer()">✕</button>
-    </div>
-    <div class="drawer-content" id="logList">
-      <div class="log-item empty-log">Waiting for actions...</div>
-    </div>
-  </div>
-
-  <!-- MAIN MENU SCREEN -->
-  <div id="mainMenu" class="screen-overlay">
-    <div class="menu-container">
-      <div class="logo-box">
-        <h1 class="game-logo" data-i18n="gameTitle">HIMALAYAN GAME BATTLE</h1>
-        <div class="logo-tag">हिमालयन कार्ड बैटल क्लब</div>
+    <!-- 30s Turn Timer UI -->
+    <div id="timer-container" style="display: none;">
+      <div class="timer-meta">
+        <span>⏱️ Turn Timer</span>
+        <span id="timer-text">30s</span>
       </div>
-
-      <div class="input-panel">
-        <input type="text" id="usernameInput" data-i18n-placeholder="namePlaceholder" placeholder="Enter Your Name" maxlength="12" value="Abhishek">
-      </div>
-
-      <!-- GAME SELECTION CARDS -->
-      <div class="game-choice-title" data-i18n="selectGameTitle">SELECT GAME TO PLAY:</div>
-      <div class="game-select-grid">
-        <div class="game-card active" id="card-chudapatti" onclick="selectGameType('chudapatti')">
-          <div class="game-card-icon">🎴</div>
-          <div class="game-card-name" data-i18n="chudapattiName">Chudapatti</div>
-          <div class="game-card-sub">( The Last Stand )</div>
-        </div>
-        <div class="game-card" id="card-bluff" onclick="selectGameType('bluff')">
-          <div class="game-card-icon">🎭</div>
-          <div class="game-card-name" data-i18n="bluffName">Bluff / Challenge</div>
-          <div class="game-card-sub">( 420 / Bluffmaster )</div>
-        </div>
-      </div>
-
-      <!-- PRIMARY ACTION BUTTONS -->
-      <div class="menu-buttons">
-        <button class="menu-btn primary glow-btn" onclick="openRoomModal()">
-          <span class="btn-icon">🌐</span> <span data-i18n="btnMultiplayer">Private Multiplayer Room</span>
-        </button>
-        <button class="menu-btn secondary" onclick="openBotModal()">
-          <span class="btn-icon">🤖</span> <span data-i18n="btnPlayWithBots">Play with AI Bots</span>
-        </button>
-      </div>
-
-      <div class="footer-action-bar">
-        <button class="icon-btn" onclick="openModal('rulesModal')">📖 <span data-i18n="btnRules">Rules</span></button>
-        <button class="icon-btn" onclick="openModal('creditsModal')">🛡️ <span data-i18n="btnCredits">Credits & Legal</span></button>
+      <div class="timer-track">
+        <div id="timer-bar"></div>
       </div>
     </div>
-  </div>
 
-  <!-- PRIVATE ROOM MODAL -->
-  <div id="roomModal" class="modal-backdrop" style="display:none;">
-    <div class="modal-window">
-      <h2 data-i18n="roomModalTitle">🌐 Private Table Room</h2>
-      <div class="setup-section">
-        <label class="setup-label" data-i18n="roomCodeLabel">Enter 4-Digit Room Code:</label>
-        <input type="text" id="roomCodeInput" class="room-input" placeholder="e.g. 7788" maxlength="6" value="7788">
+    <div id="table-area" class="panel" style="display:none;">
+      <div class="table-info">
+        <div><strong>Center Pile:</strong> <span id="pile-count">0</span> cards</div>
+        <div><strong>Current Claim:</strong> <span id="current-claim">None</span></div>
+        <div><strong>Current Turn:</strong> <span id="current-turn">-</span></div>
       </div>
-      <div class="modal-btn-row">
-        <button class="menu-btn primary" onclick="joinCustomRoom()" data-i18n="btnJoinRoom">Join / Create Room</button>
-        <button class="menu-btn cancel" onclick="closeModal('roomModal')" data-i18n="btnCancel">Cancel</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- BOT SETUP MODAL -->
-  <div id="botSetupModal" class="modal-backdrop" style="display:none;">
-    <div class="modal-window bot-modal-window">
-      <h2 data-i18n="botSetupTitle">🤖 Singleplayer Bot Setup</h2>
+      <div id="last-action-box"></div>
       
-      <div class="setup-section">
-        <label class="setup-label"><span data-i18n="botCountLabel">Select Opponents (Bots):</span> <strong id="botCountVal">3 Bots (4 Players)</strong></label>
-        <div class="bot-count-chips">
-          <button type="button" class="chip-btn" onclick="selectBotCount(1)">1v1 Duel</button>
-          <button type="button" class="chip-btn" onclick="selectBotCount(2)">2 Bots</button>
-          <button type="button" class="chip-btn active" onclick="selectBotCount(3)">3 Bots ⭐</button>
-          <button type="button" class="chip-btn" onclick="selectBotCount(4)">4 Bots</button>
-          <button type="button" class="chip-btn" onclick="selectBotCount(5)">5 Bots (Max)</button>
-        </div>
+      <div class="actions">
+        <select id="claim-select">
+          <option value="2">2</option><option value="3">3</option><option value="4">4</option>
+          <option value="5">5</option><option value="6">6</option><option value="7">7</option>
+          <option value="8">8</option><option value="9">9</option><option value="10">10</option>
+          <option value="J">J</option><option value="Q">Q</option><option value="K">K</option>
+          <option value="A">A</option>
+        </select>
+        <button id="btn-play">Play Selected Cards</button>
+        <button id="btn-challenge" class="btn-danger">BLUFF / CHALLENGE!</button>
       </div>
+    </div>
 
-      <div class="setup-section">
-        <label class="setup-label" data-i18n="aiDiffTitle">AI BOT DIFFICULTY:</label>
-        <div class="diff-btn-group">
-          <button type="button" class="level-btn" id="btn-easy" onclick="setBotDifficulty('easy')" data-i18n="diffEasy">Easy</button>
-          <button type="button" class="level-btn" id="btn-medium" onclick="setBotDifficulty('medium')" data-i18n="diffMedium">Medium</button>
-          <button type="button" class="level-btn active" id="btn-hard" onclick="setBotDifficulty('hard')" data-i18n="diffHard">Hard (Pro)</button>
-        </div>
-      </div>
+    <div id="player-hand-container" style="display:none;">
+      <h3>Your Hand (<span id="hand-count">0</span>)</h3>
+      <div id="hand" class="cards-flex"></div>
+    </div>
 
-      <div class="modal-btn-row">
-        <button class="menu-btn primary" onclick="launchCustomBotGame()" data-i18n="btnStartBotGame">Launch Arena</button>
-        <button class="menu-btn cancel" onclick="closeModal('botSetupModal')" data-i18n="btnCancel">Cancel</button>
-      </div>
+    <div id="players-list-panel" class="panel" style="display:none;">
+      <h3>Lobby Players</h3>
+      <ul id="players-list"></ul>
     </div>
   </div>
 
-  <!-- MULTIPLAYER LOBBY -->
-  <div id="lobbyScreen" class="screen-overlay" style="display:none;">
-    <div class="menu-container lobby-box">
-      <div class="room-code-tag">ROOM: <span id="lobbyRoomDisplay">----</span></div>
-      <h2 class="section-title" data-i18n="lobbyTitle">Multiplayer Lobby</h2>
-      <p class="section-sub" data-i18n="lobbySub">Waiting for friends to join...</p>
-      
-      <div class="player-chips" id="playerChipsList"></div>
-
-      <button id="startOnlineBtn" class="menu-btn primary" onclick="startMultiplayerGame()" style="display:none;" data-i18n="btnStartMatch">
-        Deal Cards & Start Match
-      </button>
-      <button class="menu-btn cancel" onclick="returnToMenu()" data-i18n="btnBack">Back to Menu</button>
-    </div>
-  </div>
-
-  <!-- CIRCULAR ARENA SCREEN -->
-  <div id="gameArena" class="arena-container" style="display:none;">
-    
-    <!-- 15S TURN TIMER BAR -->
-    <div class="turn-timer-progress-wrapper">
-      <div id="turnTimerProgress" class="turn-timer-progress-bar"></div>
-    </div>
-
-    <div class="poker-table-wrapper">
-      <div class="circular-felt-table">
-        
-        <!-- Discard Pile -->
-        <div class="side-trash-deck" id="trashPileBox">
-          <div class="deck-icon">🎴</div>
-          <span id="trashCount">Discard: 0</span>
-        </div>
-
-        <!-- Center Match Info -->
-        <div class="center-table-info">
-          <span class="lead-badge" id="leadBadgeBox">
-            <span id="leadLabelText">Lead</span>: 
-            <strong id="leadSuitDisplay">None</strong>
-            <span id="headerVisualMini" class="header-visual-card"></span>
-          </span>
-          <span class="heap-badge"><span data-i18n="heapLabel">Heap</span>: <strong id="heapCount">0</strong></span>
-        </div>
-
-        <div id="alertBanner" class="alert-banner"></div>
-
-        <!-- Center 3D Layered Card Heap -->
-        <div id="trickTable" class="trick-table"></div>
-
-        <!-- Opponent Seats -->
-        <div id="seatTop" class="player-seat seat-top"></div>
-        <div id="seatLeft" class="player-seat seat-left"></div>
-        <div id="seatRight" class="player-seat seat-right"></div>
-        <div id="seatTopLeft" class="player-seat seat-top-left"></div>
-        <div id="seatTopRight" class="player-seat seat-top-right"></div>
-
-      </div>
-    </div>
-
-    <!-- BLUFF ACTION BAR -->
-    <div id="bluffActionBar" class="bluff-action-bar" style="display:none;">
-      <div class="rank-selector-row" id="rankSelectWrapper">
-        <div class="visual-claim-card" id="visualClaimBadge">
-          <span class="v-val" id="vCardVal">A</span>
-          <span class="v-suit">♠</span>
-        </div>
-
-        <div class="claim-details">
-          <label data-i18n="claimRankLabel">Claim Rank (दावा):</label>
-          <select id="claimRankSelect" onchange="updateVisualClaimPreview(this.value)">
-            <option value="A">Ace / इक्का (A)</option>
-            <option value="K">King / बादशाह (K)</option>
-            <option value="Q">Queen / बेगम (Q)</option>
-            <option value="J">Jack / गुलाम (J)</option>
-            <option value="10">10 (दहला)</option>
-            <option value="9">9 (नहला)</option>
-            <option value="8">8 (अट्ठा)</option>
-            <option value="7">7 (सत्ता)</option>
-            <option value="6">6 (छक्का)</option>
-            <option value="5">5 (पंजी)</option>
-            <option value="4">4 (चौकी)</option>
-            <option value="3">3 (तिक्की)</option>
-            <option value="2">2 (दुक्की)</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="bluff-action-buttons">
-        <button class="bluff-btn play" onclick="submitBluffCards()">🎭 Play Face-Down (<span id="selectedCount">0</span>)</button>
-        <button class="bluff-btn pass" onclick="submitBluffPass()">✋ Pass</button>
-        <button class="bluff-btn show" id="btnShowChallenge" onclick="submitBluffShow()" style="display:none;">🔍 SHOW / CHALLENGE!</button>
-      </div>
-    </div>
-
-    <!-- BOTTOM PLAYER SECTION -->
-    <footer class="bottom-player-section">
-      <div class="player-seat seat-bottom" id="mySeatBox">
-        <div class="seat-avatar" id="myAvatar">👤</div>
-        <div class="seat-details">
-          <span class="seat-name" id="myNameDisplay">You</span>
-          <span class="seat-status" id="myTurnBadge">Waiting...</span>
-        </div>
-        <div class="seat-timer-badge" id="seatTimer">15s</div>
-      </div>
-      
-      <div class="hand-scroller">
-        <div id="playerHand" class="card-fan"></div>
-      </div>
-    </footer>
-
-  </div>
-
-  <!-- VICTORY PODIUM MODAL -->
-  <div id="podiumModal" class="modal-backdrop" style="display:none;">
-    <div class="modal-window podium-window">
-      <h2 data-i18n="matchFinishedTitle">🏆 MATCH CONCLUDED</h2>
-      <div class="podium-scores" id="podiumScoresList"></div>
-      <button class="modal-close-btn primary" onclick="returnToMenu()" data-i18n="btnPlayAgain">Return to Main Menu</button>
-    </div>
-  </div>
-
-  <!-- RULES MODAL -->
-  <div id="rulesModal" class="modal-backdrop" style="display:none;">
-    <div class="modal-window">
-      <h2 data-i18n="rulesTitle">🎴 Game Rules</h2>
-      <div class="modal-body" id="rulesBodyContent"></div>
-      <button class="modal-close-btn" onclick="closeModal('rulesModal')" data-i18n="btnUnderstand">Understood</button>
-    </div>
-  </div>
-
-  <!-- CREDITS MODAL -->
-  <div id="creditsModal" class="modal-backdrop" style="display:none;">
-    <div class="modal-window credits-window">
-      <div class="badge-o9">O9 PRODUCTIONS</div>
-      <h2>HIMALAYAN GAME BATTLE</h2>
-      <div class="dev-tag" data-i18n="creditsDev">Architected & Engineered by:</div>
-      <div class="dev-name">Abhishek Chauhan</div>
-      <div class="credits-divider"></div>
-      <div class="legal-text" data-i18n="creditsLegal">
-        <p>© 2026 O9 Productions. All Rights Reserved.</p>
-        <p>Himalayan Strategic Multi-Game Battle Engine.</p>
-      </div>
-      <button class="modal-close-btn" onclick="closeModal('creditsModal')" data-i18n="btnClose">Close</button>
-    </div>
-  </div>
-
-  <script src="/game.js"></script>
+  <script src="game.js"></script>
 </body>
 </html>
