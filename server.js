@@ -1,3 +1,26 @@
+require('dotenv').config();
+const mongoose = require('mongoose');
+
+// MongoDB Connection Setup
+const MONGO_URI = process.env.MONGO_URI;
+if (MONGO_URI) {
+  mongoose.connect(MONGO_URI)
+    .then(() => console.log(' Connected to MongoDB Atlas successfully!'))
+    .catch((err) => console.error(' MongoDB Connection Error:', err));
+} else {
+  console.warn(' MONGO_URI not found in environment variables. Running in in-memory mode.');
+}
+
+// Player Schema & Model for Persistent Stats
+const playerSchema = new mongoose.Schema({
+  username: { type: String, required: true, unique: true },
+  xp: { type: Number, default: 0 },
+  level: { type: Number, default: 1 },
+  matchesPlayed: { type: Number, default: 0 },
+  wins: { type: Number, default: 0 }
+});
+
+const Player = mongoose.models.Player || mongoose.model('Player', playerSchema);
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
