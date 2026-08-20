@@ -9,7 +9,7 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 10000;
 
 const MONGO_URI = process.env.MONGO_URI;
 if (MONGO_URI) {
@@ -244,4 +244,4 @@ io.on("connection", (socket) => {
   });
 });
 
-server.listen(PORT, "0.0.0.0", () => console.log("Himalayan Game Engine running on port " + PORT));
+server.listen(PORT, () => { console.log(` Himalayan Game Engine running on port ${PORT}`); });
