@@ -244,4 +244,4 @@ io.on("connection", (socket) => {
   });
 });
 
-server.listen(PORT, () => console.log("Himalayan Game Engine running on port " + PORT));
+server.listen(PORT, "0.0.0.0", () => console.log("Himalayan Game Engine running on port " + PORT));
