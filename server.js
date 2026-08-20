@@ -1,9 +1,9 @@
-require('dotenv').config();
-const express = require('express');
-const http = require('http');
-const { Server } = require('socket.io');
-const path = require('path');
-const mongoose = require('mongoose');
+require("dotenv").config();
+const express = require("express");
+const http = require("http");
+const { Server } = require("socket.io");
+const path = require("path");
+const mongoose = require("mongoose");
 
 const app = express();
 const server = http.createServer(app);
@@ -14,10 +14,10 @@ const PORT = process.env.PORT || 3000;
 const MONGO_URI = process.env.MONGO_URI;
 if (MONGO_URI) {
   mongoose.connect(MONGO_URI)
-    .then(() => console.log(' Connected to MongoDB Atlas successfully!'))
-    .catch(err => console.error(' MongoDB Connection Error:', err));
+    .then(() => console.log(" Connected to MongoDB Atlas successfully!"))
+    .catch(err => console.error(" MongoDB Connection Error:", err));
 } else {
-  console.warn(' MONGO_URI not provided. Running in memory mode.');
+  console.warn(" MONGO_URI not provided. Running in memory mode.");
 }
 
 const playerSchema = new mongoose.Schema({
@@ -27,7 +27,7 @@ const playerSchema = new mongoose.Schema({
   matchesPlayed: { type: Number, default: 0 },
   wins: { type: Number, default: 0 }
 });
-const Player = mongoose.models.Player || mongoose.model('Player', playerSchema);
+const Player = mongoose.models.Player || mongoose.model("Player", playerSchema);
 
 async function updatePlayerStats(username, won) {
   try {
@@ -44,19 +44,19 @@ async function updatePlayerStats(username, won) {
     await player.save();
     return player;
   } catch (err) {
-    console.error('Error updating player stats:', err);
+    console.error("Error updating player stats:", err);
     return null;
   }
 }
 
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, "public")));
 
 const rooms = {};
 const TURN_TIMEOUT_SEC = 30;
 
 function createDeck() {
-  const suits = ['♠', '♥', '♦', '♣'];
-  const values = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
+  const suits = ["♠", "♥", "♦", "♣"];
+  const values = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"];
   const deck = [];
   for (let s of suits) {
     for (let v of values) {
@@ -84,11 +84,11 @@ function startTurnTimer(roomId) {
   if (room.timer) clearInterval(room.timer);
   room.timeLeft = TURN_TIMEOUT_SEC;
 
-  io.to(roomId).emit('timerUpdate', { timeLeft: room.timeLeft, total: TURN_TIMEOUT_SEC });
+  io.to(roomId).emit("timerUpdate", { timeLeft: room.timeLeft, total: TURN_TIMEOUT_SEC });
 
   room.timer = setInterval(() => {
     room.timeLeft -= 1;
-    io.to(roomId).emit('timerUpdate', { timeLeft: room.timeLeft, total: TURN_TIMEOUT_SEC });
+    io.to(roomId).emit("timerUpdate", { timeLeft: room.timeLeft, total: TURN_TIMEOUT_SEC });
 
     if (room.timeLeft <= 0) {
       clearInterval(room.timer);
@@ -102,7 +102,7 @@ function handleTimeout(roomId) {
   if (!room || !room.gameActive) return;
 
   const currentPlayer = room.players[room.currentTurnIndex];
-  io.to(roomId).emit('gameMessage', `⏰ ${currentPlayer.name}'s turn timed out! Auto-playing random card...`);
+  io.to(roomId).emit("gameMessage", "⏰ " + currentPlayer.name + " turn timed out! Auto-playing random card...");
 
   if (currentPlayer.cards.length > 0) {
     const randomCardIndex = Math.floor(Math.random() * currentPlayer.cards.length);
@@ -113,7 +113,7 @@ function handleTimeout(roomId) {
     room.lastPlay = { player: currentPlayer.name, cards: [playedCard], claim: claim };
     room.currentClaim = claim;
 
-    io.to(currentPlayer.id).emit('yourCards', currentPlayer.cards);
+    io.to(currentPlayer.id).emit("yourCards", currentPlayer.cards);
 
     if (currentPlayer.cards.length === 0) {
       endGame(roomId, currentPlayer);
@@ -121,7 +121,7 @@ function handleTimeout(roomId) {
     }
 
     room.currentTurnIndex = (room.currentTurnIndex + 1) % room.players.length;
-    io.to(roomId).emit('gameState', sanitizeRoomState(room));
+    io.to(roomId).emit("gameState", sanitizeRoomState(room));
     startTurnTimer(roomId);
   }
 }
@@ -136,11 +136,11 @@ async function endGame(roomId, winner) {
     await updatePlayerStats(p.name, won);
   }
 
-  io.to(roomId).emit('gameOver', { winner: winner.name });
+  io.to(roomId).emit("gameOver", { winner: winner.name });
 }
 
-io.on('connection', (socket) => {
-  socket.on('joinRoom', ({ roomId, username }) => {
+io.on("connection", (socket) => {
+  socket.on("joinRoom", ({ roomId, username }) => {
     socket.join(roomId);
     if (!rooms[roomId]) {
       rooms[roomId] = {
@@ -158,11 +158,11 @@ io.on('connection', (socket) => {
     const room = rooms[roomId];
     if (room.players.length < 4 && !room.gameActive) {
       room.players.push({ id: socket.id, name: username, cards: [] });
-      io.to(roomId).emit('gameState', sanitizeRoomState(room));
+      io.to(roomId).emit("gameState", sanitizeRoomState(room));
     }
   });
 
-  socket.on('startGame', (roomId) => {
+  socket.on("startGame", (roomId) => {
     const room = rooms[roomId];
     if (!room || room.players.length < 2) return;
 
@@ -171,7 +171,7 @@ io.on('connection', (socket) => {
 
     room.players.forEach((p, idx) => {
       p.cards = deck.slice(idx * cardsPerPlayer, (idx + 1) * cardsPerPlayer);
-      io.to(p.id).emit('yourCards', p.cards);
+      io.to(p.id).emit("yourCards", p.cards);
     });
 
     room.gameActive = true;
@@ -180,11 +180,11 @@ io.on('connection', (socket) => {
     room.lastPlay = null;
     room.currentClaim = null;
 
-    io.to(roomId).emit('gameState', sanitizeRoomState(room));
+    io.to(roomId).emit("gameState", sanitizeRoomState(room));
     startTurnTimer(roomId);
   });
 
-  socket.on('playCards', ({ roomId, cards, claim }) => {
+  socket.on("playCards", ({ roomId, cards, claim }) => {
     const room = rooms[roomId];
     if (!room || !room.gameActive) return;
     const player = room.players[room.currentTurnIndex];
@@ -203,11 +203,11 @@ io.on('connection', (socket) => {
     }
 
     room.currentTurnIndex = (room.currentTurnIndex + 1) % room.players.length;
-    io.to(roomId).emit('gameState', sanitizeRoomState(room));
+    io.to(roomId).emit("gameState", sanitizeRoomState(room));
     startTurnTimer(roomId);
   });
 
-  socket.on('challenge', ({ roomId }) => {
+  socket.on("challenge", ({ roomId }) => {
     const room = rooms[roomId];
     if (!room || !room.gameActive || !room.lastPlay) return;
 
@@ -219,18 +219,18 @@ io.on('connection', (socket) => {
 
     let loser = isBluff ? lastPlayer : challenger;
     loser.cards.push(...room.pile);
-    io.to(loser.id).emit('yourCards', loser.cards);
+    io.to(loser.id).emit("yourCards", loser.cards);
 
-    io.to(roomId).emit('gameMessage', `${challenger.name} challenged ${lastPlayer.name}! Result: ${isBluff ? 'BLUFF CAUGHT! ' + lastPlayer.name + ' takes pile.' : 'LEGIT! ' + challenger.name + ' takes pile.'}`);
+    io.to(roomId).emit("gameMessage", challenger.name + " challenged " + lastPlayer.name + "! Result: " + (isBluff ? "BLUFF CAUGHT! " + lastPlayer.name + " takes pile." : "LEGIT! " + challenger.name + " takes pile."));
 
     room.pile = [];
     room.lastPlay = null;
     room.currentClaim = null;
-    io.to(roomId).emit('gameState', sanitizeRoomState(room));
+    io.to(roomId).emit("gameState", sanitizeRoomState(room));
     startTurnTimer(roomId);
   });
 
-  socket.on('disconnect', () => {
+  socket.on("disconnect", () => {
     for (let rId in rooms) {
       const room = rooms[rId];
       room.players = room.players.filter(p => p.id !== socket.id);
@@ -238,10 +238,10 @@ io.on('connection', (socket) => {
         if (room.timer) clearInterval(room.timer);
         delete rooms[rId];
       } else {
-        io.to(rId).emit('gameState', sanitizeRoomState(room));
+        io.to(rId).emit("gameState", sanitizeRoomState(room));
       }
     }
   });
 });
 
-server.listen(PORT, () => console.log(` Himalayan Game Engine running on port ${PORT}`));
+server.listen(PORT, () => console.log("Himalayan Game Engine running on port " + PORT));
