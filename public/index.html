@@ -3,63 +3,144 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Himalayan Game Battle - Chudapatti</title>
+  <title>Himalayan Game Battle Arena</title>
   <link rel="stylesheet" href="style.css">
   <script src="/socket.io/socket.io.js"></script>
 </head>
 <body>
-  <div class="game-container">
-    <header>
-      <h1>🏔️ Himalayan Game Battle (Chudapatti)</h1>
-      <div id="game-status">Enter Room & Name to Begin</div>
+  <div class="hub-container">
+    <!-- Top Header -->
+    <header class="main-header">
+      <div class="logo-badge">🏔️ HIMALAYAN BATTLE HUB</div>
+      <p class="subtitle">Traditional Himalayan Strategic Card & Board Arena</p>
     </header>
 
-    <div id="auth-panel" class="panel">
-      <input type="text" id="username" placeholder="Your Name" />
-      <input type="text" id="room-id" placeholder="Room ID (e.g. room101)" />
-      <button id="btn-join">Join Room</button>
-      <button id="btn-start" style="display:none;">Start Game</button>
+    <!-- STEP 1: GAME SELECTOR SCREEN -->
+    <div id="screen-game-select" class="screen-view active">
+      <h2 class="section-title">Select Your Game</h2>
+      <div class="game-cards-grid">
+        <div class="game-card featured" onclick="selectGame(chudapatti)">
+          <div class="card-tag">POPULAR</div>
+          <div class="card-icon">🃏</div>
+          <h3>Chudapatti (Bluff)</h3>
+          <p>Test your psychological bluffing skills in this classic fast-paced Himalayan deception card battle.</p>
+          <button class="btn-primary">Play Chudapatti</button>
+        </div>
+
+        <div class="game-card" onclick="selectGame(baghchal)">
+          <div class="card-tag coming-soon">STRATEGY</div>
+          <div class="card-icon">🐅</div>
+          <h3>Bagh-Chal (Tiger & Goat)</h3>
+          <p>Ancient Himalayan board game of tigers vs goats. Trap the predator or feast on the herd.</p>
+          <button class="btn-secondary">Play Bagh-Chal</button>
+        </div>
+      </div>
     </div>
 
-    <div id="timer-container" style="display: none;">
-      <div class="timer-meta">
-        <span>⏱️ Turn Timer</span>
-        <span id="timer-text">30s</span>
-      </div>
-      <div class="timer-track">
-        <div id="timer-bar"></div>
-      </div>
-    </div>
-
-    <div id="table-area" class="panel" style="display:none;">
-      <div class="table-info">
-        <div><strong>Center Pile:</strong> <span id="pile-count">0</span> cards</div>
-        <div><strong>Current Claim:</strong> <span id="current-claim">None</span></div>
-        <div><strong>Current Turn:</strong> <span id="current-turn">-</span></div>
-      </div>
-      <div id="last-action-box"></div>
+    <!-- STEP 2: MODE SELECTOR SCREEN -->
+    <div id="screen-mode-select" class="screen-view">
+      <button class="btn-back" onclick="showScreen(screen-game-select)">← Back to Games</button>
+      <h2 class="section-title" id="selected-game-title">Chudapatti Battle Modes</h2>
       
-      <div class="actions">
-        <select id="claim-select">
-          <option value="2">2</option><option value="3">3</option><option value="4">4</option>
-          <option value="5">5</option><option value="6">6</option><option value="7">7</option>
-          <option value="8">8</option><option value="9">9</option><option value="10">10</option>
-          <option value="J">J</option><option value="Q">Q</option><option value="K">K</option>
-          <option value="A">A</option>
-        </select>
-        <button id="btn-play">Play Selected Cards</button>
-        <button id="btn-challenge" class="btn-danger">BLUFF / CHALLENGE!</button>
+      <div class="mode-cards-grid">
+        <!-- Solo with Bot -->
+        <div class="mode-card" onclick="startBotMode()">
+          <div class="mode-icon">🤖</div>
+          <h3>Play vs Bot</h3>
+          <p>Single-player practice mode against intelligent AI bot with 30s quick turn timer.</p>
+          <button class="btn-primary">Start Solo Match</button>
+        </div>
+
+        <!-- Online Multiplayer -->
+        <div class="mode-card" onclick="showScreen(screen-multiplayer-lobby)">
+          <div class="mode-icon">👥</div>
+          <h3>Online Multiplayer</h3>
+          <p>Create private rooms, invite friends with room codes, or join existing active lobbies.</p>
+          <button class="btn-accent">Multiplayer Lobby</button>
+        </div>
       </div>
     </div>
 
-    <div id="player-hand-container" style="display:none;">
-      <h3>Your Hand (<span id="hand-count">0</span>)</h3>
-      <div id="hand" class="cards-flex"></div>
+    <!-- STEP 3: MULTIPLAYER LOBBY SCREEN (CREATE / JOIN) -->
+    <div id="screen-multiplayer-lobby" class="screen-view">
+      <button class="btn-back" onclick="showScreen(screen-mode-select)">← Back to Modes</button>
+      <h2 class="section-title">Multiplayer Room Hub</h2>
+
+      <div class="auth-box">
+        <input type="text" id="player-name-input" placeholder="Enter Your Player Name" />
+      </div>
+
+      <div class="lobby-actions-grid">
+        <div class="action-card">
+          <h3>Create New Room</h3>
+          <p>Host a private room and get a unique 6-character room code to share.</p>
+          <button class="btn-primary" onclick="createRoomAction()">➕ Host & Generate Room</button>
+        </div>
+
+        <div class="action-card">
+          <h3>Join Existing Room</h3>
+          <p>Enter the 6-character code given by your friend.</p>
+          <div class="join-input-group">
+            <input type="text" id="join-room-code-input" placeholder="Room Code (e.g. HMB789)" />
+            <button class="btn-accent" onclick="joinRoomAction()">Join</button>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <div id="players-list-panel" class="panel" style="display:none;">
-      <h3>Lobby Players</h3>
-      <ul id="players-list"></ul>
+    <!-- STEP 4: GAMEPLAY ARENA SCREEN -->
+    <div id="screen-game-arena" class="screen-view">
+      <div class="arena-top-bar">
+        <div class="room-pill">Room: <span id="arena-room-id">ROOM101</span></div>
+        <div class="mode-pill" id="arena-mode-tag">Multiplayer</div>
+        <button id="btn-start-match" class="btn-success" onclick="startMatchAction()">Start Match</button>
+      </div>
+
+      <!-- 30s Turn Timer -->
+      <div id="timer-container">
+        <div class="timer-meta">
+          <span>⏱️ Turn Timer</span>
+          <span id="timer-text">30s</span>
+        </div>
+        <div class="timer-track">
+          <div id="timer-bar"></div>
+        </div>
+      </div>
+
+      <!-- Center Table Pile -->
+      <div class="table-surface">
+        <div class="table-stats">
+          <div>Center Pile: <strong id="pile-count">0</strong> Cards</div>
+          <div>Current Claim: <strong id="current-claim">None</strong></div>
+          <div>Active Turn: <strong id="current-turn" class="glow-text">-</strong></div>
+        </div>
+        <div id="action-announcement">Waiting for host to start match...</div>
+
+        <div class="action-controls">
+          <label>Declare Claim:</label>
+          <select id="claim-select">
+            <option value="2">2</option><option value="3">3</option><option value="4">4</option>
+            <option value="5">5</option><option value="6">6</option><option value="7">7</option>
+            <option value="8">8</option><option value="9">9</option><option value="10">10</option>
+            <option value="J">J</option><option value="Q">Q</option><option value="K">K</option>
+            <option value="A">A</option>
+          </select>
+          <button id="btn-play-cards" class="btn-primary" onclick="playSelectedCards()">Play Selected</button>
+          <button id="btn-challenge" class="btn-danger" onclick="challengeBluff()">🔥 CHALLENGE / BLUFF!</button>
+        </div>
+      </div>
+
+      <!-- Player Hand -->
+      <div class="hand-section">
+        <h3>Your Cards (<span id="hand-count">0</span>) <small style="color:#94a3b8;">Click cards to select</small></h3>
+        <div id="cards-hand" class="cards-container"></div>
+      </div>
+
+      <!-- Lobby Players -->
+      <div class="players-panel">
+        <h4>Players in Room</h4>
+        <ul id="players-list"></ul>
+      </div>
     </div>
   </div>
 
