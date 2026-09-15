@@ -332,7 +332,7 @@ if (socket) {
 
       state.players.forEach(function(p, i) {
         var relativeIdx = (i - myIndex + totalPlayers) % totalPlayers;
-        var angle = (Math.PI / 2) + (relativeIdx * (2 * Math.PI / totalPlayers));
+        var angle = (Math.PI / 2) - (relativeIdx * (2 * Math.PI / totalPlayers));
 
         var xPercent = 50 + 44 * Math.cos(angle);
         var yPercent = 50 + 42 * Math.sin(angle);
