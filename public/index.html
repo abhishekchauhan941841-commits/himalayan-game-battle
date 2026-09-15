@@ -9,6 +9,11 @@
     .screen-view { display: none; }
     .screen-view.active { display: block !important; }
     .game-card, .mode-card, .action-card, button { cursor: pointer !important; }
+    .trick-area { display: flex; gap: 12px; justify-content: center; align-items: center; min-height: 110px; margin: 10px 0; }
+    .trick-card-box { text-align: center; }
+    .trick-player-label { font-size: 0.8rem; color: #facc15; margin-bottom: 4px; font-weight: bold; }
+    .badge-safe { background: #10b981; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; margin-left: 6px; }
+    .badge-chuda { background: #ef4444; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; margin-left: 6px; font-weight: bold; }
   </style>
 </head>
 <body>
@@ -28,10 +33,10 @@
       <h2 class="section-title">Select Card Game</h2>
       <div class="game-cards-grid">
         <div class="game-card" id="card-chudapatti">
-          <div class="card-tag">MATCH & SHED</div>
+          <div class="card-tag">AUTHENTIC PAHHADI</div>
           <div class="card-icon">🃏</div>
           <h3>Chudapatti</h3>
-          <p>Discard matching cards, finish hand first. No bluffs, pure card shedding.</p>
+          <p>♠A से शुरू, सूट फॉलो, कट/डांड नियम। पहले खाली होने वाला 1st, आखिरी वाला चुड़ा!</p>
           <button type="button" class="btn-primary" id="btn-chuda-action">Play Chudapatti</button>
         </div>
 
@@ -54,7 +59,7 @@
         <div class="mode-card" id="card-mode-bot">
           <div class="mode-icon">🤖</div>
           <h3>Play vs AI Bot</h3>
-          <p>Instant match against intelligent Himalayan Bot with 30-sec timer.</p>
+          <p>Instant match against smart Himalayan Bot with 30-sec timer.</p>
           <button type="button" class="btn-primary" id="btn-bot-action">Start Instant Match</button>
         </div>
 
@@ -110,10 +115,13 @@
 
       <div class="table-surface">
         <div class="table-stats">
-          <div>Center Pile: <strong id="pile-count">0</strong> Cards</div>
-          <div id="claim-stat-box">Claim: <strong id="current-claim">None</strong></div>
+          <div id="trick-lead-suit-box">चल रहा सूट: <strong id="lead-suit-display" class="glow-text">कोई नहीं</strong></div>
+          <div id="bluff-claim-box" style="display:none;">Claim: <strong id="current-claim">None</strong></div>
           <div>Turn: <strong id="current-turn" class="glow-text">-</strong></div>
         </div>
+
+        <!-- Realtime table ground (Trick) -->
+        <div class="trick-area" id="trick-cards-display"></div>
 
         <div id="action-announcement">Waiting for match to begin...</div>
 
@@ -129,13 +137,13 @@
             </select>
           </div>
 
-          <button type="button" id="btn-play-cards" class="btn-primary">Play / Discard Selected</button>
+          <button type="button" id="btn-play-cards" class="btn-primary">चलें (Play Card)</button>
           <button type="button" id="btn-challenge" class="btn-danger" style="display:none;">🔥 CHALLENGE / BLUFF!</button>
         </div>
       </div>
 
       <div class="hand-section">
-        <h3>Your Cards (<span id="hand-count">0</span>) <small style="color:#94a3b8; font-weight:normal;">— Click cards to select</small></h3>
+        <h3>Your Cards (<span id="hand-count">0</span>) <small style="color:#94a3b8; font-weight:normal;">— Click card to select</small></h3>
         <div id="cards-hand" class="cards-container"></div>
       </div>
 
@@ -168,9 +176,7 @@
         views[i].classList.remove("active");
       }
       var target = document.getElementById(viewId);
-      if (target) {
-        target.classList.add("active");
-      }
+      if (target) target.classList.add("active");
     }
 
     function getName() {
@@ -191,7 +197,7 @@
       var pName = getName();
       var botRoom = "BOT-" + Math.random().toString(36).substring(2, 7).toUpperCase();
       currentRoom = botRoom;
-      setupArena(botRoom, "Solo vs Bot (" + selectedGame.toUpperCase() + ")", false);
+      setupArena(botRoom, "Solo vs Bot (" + (selectedGame === "chudapatti" ? "Chudapatti" : "Bluff") + ")", false);
       if (socket) {
         socket.emit("joinGame", { roomId: botRoom, username: pName, mode: "bot", gameType: selectedGame });
       }
@@ -201,7 +207,7 @@
       var pName = getName();
       var newRoom = "ROOM-" + Math.random().toString(36).substring(2, 6).toUpperCase();
       currentRoom = newRoom;
-      setupArena(newRoom, "Multiplayer (" + selectedGame.toUpperCase() + ")", true);
+      setupArena(newRoom, "Multiplayer (" + (selectedGame === "chudapatti" ? "Chudapatti" : "Bluff") + ")", true);
       if (socket) {
         socket.emit("joinGame", { roomId: newRoom, username: pName, mode: "multiplayer", gameType: selectedGame });
       }
@@ -216,7 +222,7 @@
       }
       var pName = getName();
       currentRoom = code;
-      setupArena(code, "Multiplayer (" + selectedGame.toUpperCase() + ")", false);
+      setupArena(code, "Multiplayer (" + (selectedGame === "chudapatti" ? "Chudapatti" : "Bluff") + ")", false);
       if (socket) {
         socket.emit("joinGame", { roomId: code, username: pName, mode: "multiplayer", gameType: selectedGame });
       }
@@ -230,12 +236,13 @@
       var isBluff = (selectedGame === "bluff");
       document.getElementById("bluff-claim-wrapper").style.display = isBluff ? "inline-block" : "none";
       document.getElementById("btn-challenge").style.display = isBluff ? "inline-block" : "none";
-      document.getElementById("claim-stat-box").style.display = isBluff ? "inline-block" : "none";
+      document.getElementById("bluff-claim-box").style.display = isBluff ? "inline-block" : "none";
+      document.getElementById("trick-lead-suit-box").style.display = isBluff ? "none" : "inline-block";
 
       switchView("view-arena");
     }
 
-    // Attach Click Events
+    // Attach Click Handlers
     document.getElementById("card-chudapatti").onclick = function() { selectGame("chudapatti"); };
     document.getElementById("btn-chuda-action").onclick = function(e) { e.stopPropagation(); selectGame("chudapatti"); };
 
@@ -263,7 +270,7 @@
 
     document.getElementById("btn-play-cards").onclick = function() {
       if (selectedCards.length === 0) {
-        alert("Select at least 1 card!");
+        alert("कम से कम 1 पत्ता चुनें!");
         return;
       }
       var claimVal = (selectedGame === "chudapatti") ? selectedCards[0].value : document.getElementById("claim-select").value;
@@ -271,40 +278,70 @@
         socket.emit("playCards", { roomId: currentRoom, cards: selectedCards, claim: claimVal });
       }
       selectedCards = [];
-      renderCards();
+      renderHand();
     };
 
     document.getElementById("btn-challenge").onclick = function() {
       if (socket) socket.emit("challenge", { roomId: currentRoom });
     };
 
-    // Socket Event Handlers
+    // Socket Handlers
     if (socket) {
       socket.on("yourCards", function(cards) {
         myCards = cards;
         selectedCards = [];
-        renderCards();
+        renderHand();
       });
 
       socket.on("gameState", function(state) {
-        document.getElementById("pile-count").innerText = state.pileCount;
-        document.getElementById("current-claim").innerText = state.currentClaim || "None";
+        var suitSpan = document.getElementById("lead-suit-display");
+        if (suitSpan) suitSpan.innerText = state.leadSuit || "कोई नहीं";
+
+        var claimBox = document.getElementById("current-claim");
+        if (claimBox) claimBox.innerText = state.currentClaim || "None";
+
         var cp = state.players[state.currentTurnIndex];
-        document.getElementById("current-turn").innerText = cp ? cp.name : "-";
+        var turnBox = document.getElementById("current-turn");
+        if (turnBox) turnBox.innerText = cp ? cp.name : "-";
+
+        // Display Trick Cards on ground (Chudapatti)
+        var trickDisplay = document.getElementById("trick-cards-display");
+        if (trickDisplay) {
+          trickDisplay.innerHTML = "";
+          if (state.currentTrick && state.currentTrick.length > 0) {
+            state.currentTrick.forEach(function(t) {
+              var cardBox = document.createElement("div");
+              cardBox.className = "trick-card-box";
+
+              var label = document.createElement("div");
+              label.className = "trick-player-label";
+              label.innerText = t.playerName;
+
+              var c = t.card;
+              var isRed = (c.suit === "♥" || c.suit === "♦");
+              var cardEl = document.createElement("div");
+              cardEl.className = "card " + (isRed ? "red" : "");
+              cardEl.innerHTML = "<span>" + c.value + "</span><span style='font-size:1.4rem;'>" + c.suit + "</span>";
+
+              cardBox.appendChild(label);
+              cardBox.appendChild(cardEl);
+              trickDisplay.appendChild(cardBox);
+            });
+          }
+        }
 
         var pl = document.getElementById("players-list");
         if (pl) {
           pl.innerHTML = "";
           state.players.forEach(function(p) {
             var li = document.createElement("li");
-            li.innerText = p.name + " (" + p.cardCount + " cards)";
+            var badge = "";
+            if (p.isSafe) {
+              badge = p.rankTitle === "चुड़ा" ? "<span class='badge-chuda'>चुड़ा</span>" : "<span class='badge-safe'>" + p.rankTitle + "</span>";
+            }
+            li.innerHTML = p.name + " (" + p.cardCount + " पत्ते)" + badge;
             pl.appendChild(li);
           });
-        }
-
-        if (state.lastPlay) {
-          document.getElementById("action-announcement").innerText = 
-            "👉 " + state.lastPlay.player + " played " + state.lastPlay.cards.length + " card(s) [" + state.lastPlay.claim + "]";
         }
       });
 
@@ -326,11 +363,18 @@
       });
 
       socket.on("gameOver", function(data) {
-        alert("🏆 MATCH OVER! Winner: " + data.winner);
+        var res = "🏆 MATCH OVER!\n";
+        if (data.winners && data.winners.length > 0) {
+          res += "1st Winner: " + data.winners[0] + "\n";
+        }
+        if (data.loser) {
+          res += "चुड़ा: " + data.loser;
+        }
+        alert(res);
       });
     }
 
-    function renderCards() {
+    function renderHand() {
       var box = document.getElementById("cards-hand");
       if (!box) return;
       box.innerHTML = "";
@@ -340,7 +384,7 @@
         var el = document.createElement("div");
         var isRed = (card.suit === "♥" || card.suit === "♦");
         el.className = "card " + (isRed ? "red" : "");
-        
+
         var valSpan = document.createElement("span");
         valSpan.innerText = card.value;
         var suitSpan = document.createElement("span");
@@ -351,13 +395,21 @@
         el.appendChild(suitSpan);
 
         el.onclick = function() {
-          var idx = selectedCards.findIndex(function(c) { return c.value === card.value && c.suit === card.suit; });
-          if (idx > -1) {
-            selectedCards.splice(idx, 1);
-            el.classList.remove("selected");
-          } else {
-            selectedCards.push(card);
+          if (selectedGame === "chudapatti") {
+            // Chudapatti allows 1 card play per trick
+            selectedCards = [card];
+            document.querySelectorAll("#cards-hand .card").forEach(c => c.classList.remove("selected"));
             el.classList.add("selected");
+          } else {
+            // Bluff allows multiple card plays
+            var idx = selectedCards.findIndex(function(c) { return c.value === card.value && c.suit === card.suit; });
+            if (idx > -1) {
+              selectedCards.splice(idx, 1);
+              el.classList.remove("selected");
+            } else {
+              selectedCards.push(card);
+              el.classList.add("selected");
+            }
           }
         };
 
