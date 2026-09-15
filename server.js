@@ -57,6 +57,7 @@ function sanitizeState(room) {
     pileCount: room.pile.length,
     lastPlay: room.lastPlay,
     gameActive: room.gameActive,
+    isResolving: room.isResolving,
     winners: room.winners,
     loser: room.loser
   };
@@ -68,7 +69,7 @@ function getActivePlayers(room) {
 
 function startTurnTimer(roomId) {
   const room = rooms[roomId];
-  if (!room || !room.gameActive) return;
+  if (!room || !room.gameActive || room.isResolving) return;
 
   if (room.timer) clearInterval(room.timer);
   room.timeLeft = TURN_TIMEOUT_SEC;
@@ -78,7 +79,7 @@ function startTurnTimer(roomId) {
   if (!currentPlayer) return;
 
   if (currentPlayer.isBot) {
-    setTimeout(() => { executeBotTurn(roomId); }, 1200);
+    setTimeout(() => { executeBotTurn(roomId); }, 1500);
     return;
   }
 
@@ -95,14 +96,13 @@ function startTurnTimer(roomId) {
 
 function handleTimeout(roomId) {
   const room = rooms[roomId];
-  if (!room || !room.gameActive) return;
+  if (!room || !room.gameActive || room.isResolving) return;
 
   const cp = room.players[room.currentTurnIndex];
   if (!cp || cp.isSafe || cp.cards.length === 0) return;
 
   io.to(roomId).emit("gameMessage", `⏰ ${cp.name} का टाइम खत्म! ऑटो कार्ड चल दिया गया।`);
   
-  // Choose valid card automatically
   let cardToPlay;
   if (room.gameType === "chudapatti" && room.leadSuit) {
     const matching = cp.cards.find(c => c.suit === room.leadSuit);
@@ -116,13 +116,12 @@ function handleTimeout(roomId) {
 
 function executeBotTurn(roomId) {
   const room = rooms[roomId];
-  if (!room || !room.gameActive) return;
+  if (!room || !room.gameActive || room.isResolving) return;
 
   const bot = room.players[room.currentTurnIndex];
   if (!bot || !bot.isBot || bot.isSafe || bot.cards.length === 0) return;
 
   if (room.gameType === "bluff") {
-    // Bluff bot logic
     if (room.lastPlay && Math.random() < 0.25) {
       handleChallenge(roomId, bot.id);
       return;
@@ -134,26 +133,20 @@ function executeBotTurn(roomId) {
     return;
   }
 
-  // Chudapatti Bot AI
   let cardToPlay;
   if (room.isFirstTurn) {
-    // First turn must play Ace of Spades (♠A)
     const aceSpade = bot.cards.find(c => c.suit === "♠" && c.value === "A");
     cardToPlay = aceSpade || bot.cards[0];
   } else if (room.leadSuit) {
-    // Must follow suit if available
     const sameSuitCards = bot.cards.filter(c => c.suit === room.leadSuit);
     if (sameSuitCards.length > 0) {
-      // Play lowest card of lead suit
       sameSuitCards.sort((a, b) => CARD_RANKS[a.value] - CARD_RANKS[b.value]);
       cardToPlay = sameSuitCards[0];
     } else {
-      // Cut / Thulla: Throw highest rank card of another suit to punish
       const otherCards = [...bot.cards].sort((a, b) => CARD_RANKS[b.value] - CARD_RANKS[a.value]);
       cardToPlay = otherCards[0];
     }
   } else {
-    // Leading new trick: play lowest card
     const sorted = [...bot.cards].sort((a, b) => CARD_RANKS[a.value] - CARD_RANKS[b.value]);
     cardToPlay = sorted[0];
   }
@@ -168,13 +161,13 @@ function dealAndStart(roomId) {
   const deck = createDeck();
   const numPlayers = room.players.length;
 
-  // Natural deal (right-hand distribution)
   room.players.forEach(p => { p.cards = []; p.isSafe = false; p.rankTitle = ""; });
   deck.forEach((card, idx) => {
     room.players[idx % numPlayers].cards.push(card);
   });
 
   room.gameActive = true;
+  room.isResolving = false;
   room.currentTrick = [];
   room.pile = [];
   room.winners = [];
@@ -185,7 +178,6 @@ function dealAndStart(roomId) {
 
   if (room.gameType === "chudapatti") {
     room.isFirstTurn = true;
-    // Find player who holds ♠A (हुकुम का इक्का)
     let starterIndex = 0;
     room.players.forEach((p, idx) => {
       if (p.cards.some(c => c.suit === "♠" && c.value === "A")) {
@@ -220,7 +212,6 @@ function checkPlayerVictory(roomId, player) {
 
     const remaining = getActivePlayers(room);
     if (remaining.length === 1) {
-      // Last person remaining is the CHUDA
       const loserPlayer = remaining[0];
       loserPlayer.isSafe = true;
       loserPlayer.rankTitle = "चुड़ा";
@@ -243,16 +234,14 @@ function nextTurnIndex(room) {
 
 function playTurn(roomId, socketId, cards, claim) {
   const room = rooms[roomId];
-  if (!room || !room.gameActive) return;
+  if (!room || !room.gameActive || room.isResolving) return;
 
   const player = room.players[room.currentTurnIndex];
   if (!player || player.id !== socketId || player.isSafe) return;
 
   const playedCard = cards[0];
 
-  // Chudapatti Logic
   if (room.gameType === "chudapatti") {
-    // 1. Check First Turn Ace of Spades requirement
     if (room.isFirstTurn) {
       if (playedCard.suit !== "♠" || playedCard.value !== "A") {
         io.to(player.id).emit("gameMessage", "❌ पहली चाल में ♠A (हुकुम का इक्का) चलना अनिवार्य है!");
@@ -261,7 +250,6 @@ function playTurn(roomId, socketId, cards, claim) {
       room.isFirstTurn = false;
     }
 
-    // 2. Suit rule check: if lead suit active, check if player is holding lead suit
     const hasLeadSuit = player.cards.some(c => c.suit === room.leadSuit);
     if (room.leadSuit && playedCard.suit !== room.leadSuit && hasLeadSuit) {
       io.to(player.id).emit("gameMessage", `❌ आपके पास ${room.leadSuit} मौजूद है, आपको वही चलना होगा!`);
@@ -270,7 +258,6 @@ function playTurn(roomId, socketId, cards, claim) {
 
     if (room.timer) clearInterval(room.timer);
 
-    // Remove played card from hand
     player.cards = player.cards.filter(c => !(c.suit === playedCard.suit && c.value === playedCard.value));
     if (!player.isBot) io.to(player.id).emit("yourCards", player.cards);
 
@@ -285,16 +272,14 @@ function playTurn(roomId, socketId, cards, claim) {
     });
 
     room.lastPlay = { player: player.name, cards: [playedCard], claim: playedCard.value };
-
-    // Check if player just emptied cards
     checkPlayerVictory(roomId, player);
 
-    // Check if player played different suit (DAAND / THULLA / CUT)
+    // CUT / DAAND CONDITION
     if (playedCard.suit !== room.leadSuit) {
-      // Round stops immediately!
-      io.to(roomId).emit("gameMessage", `💥 ${player.name} ने कट मारा (${playedCard.suit})! चाल यहीं रुक गई।`);
-      
-      // Find who played the highest card of the lead suit
+      room.isResolving = true;
+      io.to(roomId).emit("gameMessage", `💥 ${player.name} ने कट मारा (${playedCard.value}${playedCard.suit})!`);
+      io.to(roomId).emit("gameState", sanitizeState(room));
+
       let highestVal = -1;
       let penaltyPlayerIndex = -1;
       room.currentTrick.forEach(t => {
@@ -308,37 +293,39 @@ function playTurn(roomId, socketId, cards, claim) {
       });
 
       const penaltyPlayer = room.players[penaltyPlayerIndex];
-      // Give all cards of current trick + floor pile to penalty player
-      const penaltyCards = room.currentTrick.map(t => t.card);
-      penaltyPlayer.cards.push(...penaltyCards, ...room.pile);
-      room.pile = [];
 
-      io.to(roomId).emit("gameMessage", `🚨 ${penaltyPlayer.name} का ${room.leadSuit} सबसे बड़ा था, सारे पत्ते उनको उठाने पड़े!`);
-      if (!penaltyPlayer.isBot) io.to(penaltyPlayer.id).emit("yourCards", penaltyPlayer.cards);
+      // Delay 2.5s so both cards remain on screen clearly
+      setTimeout(() => {
+        if (!room.gameActive) return;
+        const penaltyCards = room.currentTrick.map(t => t.card);
+        penaltyPlayer.cards.push(...penaltyCards, ...room.pile);
+        room.pile = [];
 
-      // Reset trick
-      room.currentTrick = [];
-      room.leadSuit = null;
+        io.to(roomId).emit("gameMessage", `🚨 ${penaltyPlayer.name} का ${room.leadSuit} सबसे बड़ा था, सारे पत्ते उनको उठाने पड़े!`);
+        if (!penaltyPlayer.isBot) io.to(penaltyPlayer.id).emit("yourCards", penaltyPlayer.cards);
 
-      // Next turn: The player who gave the cut starts the new trick!
-      room.currentTurnIndex = room.players.findIndex(p => p.id === player.id);
-      if (room.players[room.currentTurnIndex].isSafe) {
-        room.currentTurnIndex = nextTurnIndex(room);
-      }
+        room.currentTrick = [];
+        room.leadSuit = null;
+        room.isResolving = false;
 
-      io.to(roomId).emit("gameState", sanitizeState(room));
-      startTurnTimer(roomId);
+        room.currentTurnIndex = room.players.findIndex(p => p.id === player.id);
+        if (room.players[room.currentTurnIndex].isSafe) {
+          room.currentTurnIndex = nextTurnIndex(room);
+        }
+
+        io.to(roomId).emit("gameState", sanitizeState(room));
+        startTurnTimer(roomId);
+      }, 2500);
       return;
     }
 
-    // If active players all played in this trick
+    // ROUND COMPLETE CONDITION (Same Suit)
     const activePlayers = getActivePlayers(room);
     if (room.currentTrick.length >= activePlayers.length) {
-      // Saaf Round! All played same suit
-      io.to(roomId).emit("gameMessage", `✨ साफ़ राउंड! सारे पत्ते डिस्कार्ड हो गए।`);
-      room.pile.push(...room.currentTrick.map(t => t.card)); // Cleared from table
+      room.isResolving = true;
+      io.to(roomId).emit("gameMessage", `✨ दोनों ने चाल चल दी! पत्ते साफ़ हो रहे हैं...`);
+      io.to(roomId).emit("gameState", sanitizeState(room));
 
-      // Find highest card winner to start next trick
       let highestVal = -1;
       let trickWinnerIndex = -1;
       room.currentTrick.forEach(t => {
@@ -349,28 +336,35 @@ function playTurn(roomId, socketId, cards, claim) {
         }
       });
 
-      room.currentTrick = [];
-      room.leadSuit = null;
+      // Delay 2.2s so player can easily see opponent's card
+      setTimeout(() => {
+        if (!room.gameActive) return;
+        room.pile.push(...room.currentTrick.map(t => t.card));
+        const winner = room.players[trickWinnerIndex];
+        io.to(roomId).emit("gameMessage", `👑 ${winner.name} का पत्ता सबसे बड़ा था! अगली चाल उनकी है।`);
 
-      // Trick winner starts new trick
-      room.currentTurnIndex = trickWinnerIndex;
-      if (room.players[room.currentTurnIndex].isSafe) {
-        room.currentTurnIndex = nextTurnIndex(room);
-      }
+        room.currentTrick = [];
+        room.leadSuit = null;
+        room.isResolving = false;
 
-      io.to(roomId).emit("gameState", sanitizeState(room));
-      startTurnTimer(roomId);
+        room.currentTurnIndex = trickWinnerIndex;
+        if (room.players[room.currentTurnIndex].isSafe) {
+          room.currentTurnIndex = nextTurnIndex(room);
+        }
+
+        io.to(roomId).emit("gameState", sanitizeState(room));
+        startTurnTimer(roomId);
+      }, 2200);
       return;
     }
 
-    // Normal next player in trick
     room.currentTurnIndex = nextTurnIndex(room);
     io.to(roomId).emit("gameState", sanitizeState(room));
     startTurnTimer(roomId);
     return;
   }
 
-  // --- BLUFF GAME LOGIC ---
+  // BLUFF LOGIC
   if (room.timer) clearInterval(room.timer);
 
   player.cards = player.cards.filter(c => !cards.some(rc => rc.suit === c.suit && rc.value === c.value));
@@ -447,6 +441,7 @@ io.on("connection", (socket) => {
         isFirstTurn: true,
         lastPlay: null,
         gameActive: false,
+        isResolving: false,
         timer: null,
         timeLeft: TURN_TIMEOUT_SEC,
         winners: [],
