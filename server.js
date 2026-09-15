@@ -344,8 +344,7 @@ function playTurn(roomId, playerIdentifier, cards, claim) {
       setTimeout(() => {
         if (!rooms[roomId] || !room.gameActive) return;
         const penaltyCards = room.currentTrick.map(t => t.card);
-        penaltyPlayer.cards.push(...penaltyCards, ...room.pile);
-        room.pile = [];
+        penaltyPlayer.cards.push(...penaltyCards);
 
         io.to(roomId).emit("gameMessage", `🚨 ${penaltyPlayer.name} had the highest ${room.leadSuit}, they took all cards!`);
         if (!penaltyPlayer.isBot && penaltyPlayer.id) io.to(penaltyPlayer.id).emit("yourCards", penaltyPlayer.cards);
