@@ -5,12 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Himalayan Game Battle Arena</title>
   <link rel="stylesheet" href="style.css">
+  <style>
+    .bot-selector-wrapper { margin-top: 12px; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: bold; font-size: 0.85rem; }
+    .bot-select-dropdown { padding: 4px 10px; border-radius: 6px; background: #090d16; border: 1px solid #38bdf8; color: #fff; font-weight: bold; }
+    .opponents-ring { display: flex; gap: 12px; justify-content: center; align-items: center; flex-wrap: wrap; width: 100%; min-height: 52px; }
+  </style>
 </head>
 <body>
   <div class="hub-container">
     <header class="main-header">
       <div class="logo-badge">🏔️ HIMALAYAN BATTLE HUB</div>
-      <p class="subtitle">Traditional Himalayan Strategic Card Arena</p>
+      <p class="subtitle">Traditional Strategic Arena with Competitive Bot AI</p>
     </header>
 
     <div class="player-bar">
@@ -18,7 +23,7 @@
       <input type="text" id="global-player-name" value="Player 1" maxlength="15" />
     </div>
 
-    <!-- SCREEN 1: SELECT GAME -->
+    <!-- VIEW 1: GAME SELECT -->
     <div id="view-game-select" class="screen-view active">
       <h2 class="section-title">Select Card Game</h2>
       <div class="game-cards-grid">
@@ -40,17 +45,29 @@
       </div>
     </div>
 
-    <!-- SCREEN 2: SELECT MODE -->
+    <!-- VIEW 2: MODE SELECT -->
     <div id="view-mode-select" class="screen-view">
       <button type="button" class="btn-back" id="btn-back-to-games">← Change Game</button>
       <h2 class="section-title" id="mode-header-title">Game Modes</h2>
 
       <div class="mode-cards-grid">
-        <div class="mode-card" id="card-mode-bot">
+        <div class="mode-card">
           <div class="mode-icon">🤖</div>
-          <h3>Play vs AI Bot</h3>
-          <p>Instant start! Full AI with cut penalty mechanics & 30s quick timer.</p>
-          <button type="button" class="btn-primary" id="btn-bot-action">Start Instant Match</button>
+          <h3>Play vs Smart AI</h3>
+          <p>Instant table start with competitive calculation AI & 30s quick timer.</p>
+          
+          <div class="bot-selector-wrapper">
+            <label>Bots (1 - 5):</label>
+            <select id="bot-count-select" class="bot-select-dropdown">
+              <option value="1">1 Bot (Heads-Up)</option>
+              <option value="2">2 Bots (3 Players)</option>
+              <option value="3" selected>3 Bots (4 Players)</option>
+              <option value="4">4 Bots (5 Players)</option>
+              <option value="5">5 Bots (6 Players)</option>
+            </select>
+          </div>
+          <br>
+          <button type="button" class="btn-primary" id="btn-bot-action">Start Match</button>
         </div>
 
         <div class="mode-card" id="card-mode-multi">
@@ -62,7 +79,7 @@
       </div>
     </div>
 
-    <!-- SCREEN 3: MULTIPLAYER LOBBY -->
+    <!-- VIEW 3: MULTIPLAYER LOBBY -->
     <div id="view-multi-lobby" class="screen-view">
       <button type="button" class="btn-back" id="btn-back-to-modes">← Back to Modes</button>
       <h2 class="section-title">Multiplayer Rooms</h2>
@@ -70,7 +87,7 @@
       <div class="lobby-actions-grid">
         <div class="action-card" id="card-create-room">
           <h3>Host Private Table</h3>
-          <p>Generate a unique room code to invite up to 4 players.</p>
+          <p>Generate a unique room code to invite players.</p>
           <button type="button" class="btn-primary" id="btn-create-room-act">➕ Host New Table</button>
         </div>
 
@@ -85,7 +102,7 @@
       </div>
     </div>
 
-    <!-- SCREEN 4: 3D CASINO ARENA -->
+    <!-- VIEW 4: CASINO ARENA -->
     <div id="view-arena" class="screen-view">
       <div class="arena-top-bar">
         <div class="room-pill">Table: <span id="display-room-code">-</span></div>
@@ -104,14 +121,10 @@
       </div>
 
       <div class="casino-stadium">
-        <div class="player-pod" id="pod-opponent">
-          <div class="pod-avatar" id="opp-avatar">🤖</div>
-          <div class="pod-details">
-            <span class="pod-name" id="opp-name">Himalayan Bot</span>
-            <span class="pod-meta"><strong id="opp-card-count">0</strong> पत्ते बाकी</span>
-          </div>
-        </div>
+        <!-- TOP OPPONENTS RING (UP TO 5 BOTS/PLAYERS) -->
+        <div class="opponents-ring" id="opponents-ring"></div>
 
+        <!-- GREEN FELT TABLE -->
         <div class="green-poker-table">
           <div class="table-glass-bar">
             <div id="suit-indicator">सूट: <span id="lead-suit-display" style="color:#fff;">कोई नहीं</span></div>
@@ -123,6 +136,7 @@
           <div class="cut-alert-box" id="cut-alert-box">💥 CUT LAGA!</div>
         </div>
 
+        <!-- BOTTOM PLAYER POD (YOU) -->
         <div class="player-pod" id="pod-me">
           <div class="pod-avatar">👤</div>
           <div class="pod-details">
@@ -187,12 +201,15 @@
       switchView("view-mode-select");
     }
 
-    function startBot() {
+    function startBotMatch() {
       var pName = getName();
+      var botCount = document.getElementById("bot-count-select").value;
       var botRoom = "BOT-" + Math.random().toString(36).substring(2, 7).toUpperCase();
       currentRoom = botRoom;
-      setupArena(botRoom, "Solo vs Bot (" + (selectedGame === "chudapatti" ? "Chudapatti" : "Bluff") + ")", false);
-      if (socket) socket.emit("joinGame", { roomId: botRoom, username: pName, mode: "bot", gameType: selectedGame });
+      setupArena(botRoom, "Solo vs " + botCount + " Bots (" + (selectedGame === "chudapatti" ? "Chudapatti" : "Bluff") + ")", false);
+      if (socket) {
+        socket.emit("joinGame", { roomId: botRoom, username: pName, mode: "bot", gameType: selectedGame, botCount: botCount });
+      }
     }
 
     function createRoom() {
@@ -228,7 +245,6 @@
       switchView("view-arena");
     }
 
-    // Helper: Create Casino Grade Card DOM
     function createCardElement(card) {
       var el = document.createElement("div");
       var isRed = (card.suit === "♥" || card.suit === "♦");
@@ -261,8 +277,7 @@
     document.getElementById("btn-back-to-games").onclick = function() { switchView("view-game-select"); };
     document.getElementById("btn-back-to-modes").onclick = function() { switchView("view-mode-select"); };
 
-    document.getElementById("card-mode-bot").onclick = startBot;
-    document.getElementById("btn-bot-action").onclick = function(e) { e.stopPropagation(); startBot(); };
+    document.getElementById("btn-bot-action").onclick = startBotMatch;
 
     document.getElementById("card-mode-multi").onclick = function() { switchView("view-multi-lobby"); };
     document.getElementById("btn-multi-action").onclick = function(e) { e.stopPropagation(); switchView("view-multi-lobby"); };
@@ -305,7 +320,6 @@
 
         var myName = getName();
         var me = state.players.find(p => p.name === myName) || state.players[0];
-        var opp = state.players.find(p => p.name !== myName) || state.players[1];
 
         if (me) {
           document.getElementById("my-card-count").innerText = me.cardCount;
@@ -314,15 +328,31 @@
           else myPod.classList.remove("active-turn");
         }
 
-        if (opp) {
-          document.getElementById("opp-name").innerText = opp.name;
-          document.getElementById("opp-card-count").innerText = opp.cardCount;
-          document.getElementById("opp-avatar").innerText = opp.isBot ? "🤖" : "👤";
-          var oppPod = document.getElementById("pod-opponent");
-          if (cp && cp.name === opp.name) oppPod.classList.add("active-turn");
-          else oppPod.classList.remove("active-turn");
-        }
+        // Render Up to 5 Opponent Pods
+        var ring = document.getElementById("opponents-ring");
+        ring.innerHTML = "";
+        var opponents = state.players.filter(p => p.name !== myName);
 
+        opponents.forEach(function(opp) {
+          var pod = document.createElement("div");
+          pod.className = "player-pod " + ((cp && cp.name === opp.name) ? "active-turn" : "");
+
+          var av = document.createElement("div");
+          av.className = "pod-avatar";
+          av.innerText = opp.isBot ? "🤖" : "👤";
+
+          var details = document.createElement("div");
+          details.className = "pod-details";
+          details.innerHTML = "<span class='pod-name'>" + opp.name + "</span>" +
+                              "<span class='pod-meta'><strong>" + opp.cardCount + "</strong> पत्ते" +
+                              (opp.isSafe ? " (" + opp.rankTitle + ")" : "") + "</span>";
+
+          pod.appendChild(av);
+          pod.appendChild(details);
+          ring.appendChild(pod);
+        });
+
+        // Render Animated Trick Cards in Table Center
         var feltZone = document.getElementById("trick-throw-zone");
 
         if (!state.currentTrick || state.currentTrick.length === 0) {

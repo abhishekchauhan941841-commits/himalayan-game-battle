@@ -28,6 +28,14 @@ const CARD_RANKS = {
   "J": 11, "Q": 12, "K": 13, "A": 14
 };
 
+const BOT_NAMES = [
+  "🤖 Himalayan Alpha",
+  "🏔️ Spiti Raider",
+  "❄️ Kinnaur Ace",
+  "⚡ Shimla Falcon",
+  "🛡️ Chamba Titan"
+];
+
 function createDeck() {
   const suits = ["♠", "♥", "♦", "♣"];
   const values = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"];
@@ -88,7 +96,7 @@ function startTurnTimer(roomId) {
   if (currentPlayer.isBot) {
     setTimeout(() => {
       executeBotTurn(roomId);
-    }, 1100);
+    }, 1000);
     return;
   }
 
@@ -128,6 +136,7 @@ function handleTimeout(roomId) {
   playTurn(roomId, cp.id, [cardToPlay], cardToPlay.value);
 }
 
+// SMART COMPETITIVE BOT AI
 function executeBotTurn(roomId) {
   const room = rooms[roomId];
   if (!room || !room.gameActive || room.isResolving) return;
@@ -136,7 +145,7 @@ function executeBotTurn(roomId) {
   if (!bot || !bot.isBot || bot.isSafe || bot.cards.length === 0) return;
 
   if (room.gameType === "bluff") {
-    if (room.lastPlay && Math.random() < 0.25) {
+    if (room.lastPlay && Math.random() < 0.28) {
       handleChallenge(roomId, bot.id);
       return;
     }
@@ -147,22 +156,56 @@ function executeBotTurn(roomId) {
     return;
   }
 
+  // --- SMART CHUDAPATTI AI ---
   let cardToPlay;
+
+  // 1. First Turn Ace of Spades requirement
   if (room.isFirstTurn) {
     const aceSpade = bot.cards.find(c => c.suit === "♠" && c.value === "A");
     cardToPlay = aceSpade || bot.cards[0];
-  } else if (room.leadSuit) {
-    const sameSuitCards = bot.cards.filter(c => c.suit === room.leadSuit);
-    if (sameSuitCards.length > 0) {
-      sameSuitCards.sort((a, b) => CARD_RANKS[a.value] - CARD_RANKS[b.value]);
-      cardToPlay = sameSuitCards[0];
+  }
+  // 2. Following Lead Suit
+  else if (room.leadSuit) {
+    const leadSuitCards = bot.cards.filter(c => c.suit === room.leadSuit);
+
+    if (leadSuitCards.length > 0) {
+      // Sort lowest to highest
+      leadSuitCards.sort((a, b) => CARD_RANKS[a.value] - CARD_RANKS[b.value]);
+
+      // Calculate current highest card in trick of lead suit
+      let currentHighestLead = -1;
+      room.currentTrick.forEach(t => {
+        if (t.card.suit === room.leadSuit) {
+          const rank = CARD_RANKS[t.card.value];
+          if (rank > currentHighestLead) currentHighestLead = rank;
+        }
+      });
+
+      // If playing last in trick, play just enough to win or dump lowest
+      const isLastPlayer = (room.currentTrick.length === getActivePlayers(room).length - 1);
+      if (isLastPlayer) {
+        // Can dump lowest safely because round will clear
+        cardToPlay = leadSuitCards[0];
+      } else {
+        // Play lowest safe card that doesn't risk getting caught if someone cuts later
+        cardToPlay = leadSuitCards[0];
+      }
     } else {
-      const otherCards = [...bot.cards].sort((a, b) => CARD_RANKS[b.value] - CARD_RANKS[a.value]);
-      cardToPlay = otherCards[0];
+      // CUT / THULLA OPPORTUNITY:
+      // Dump the most dangerous high rank card from longest off-suit
+      const offCards = [...bot.cards].sort((a, b) => CARD_RANKS[b.value] - CARD_RANKS[a.value]);
+      cardToPlay = offCards[0]; // Throw highest card (Aces/Kings) as punishment
     }
-  } else {
-    const sorted = [...bot.cards].sort((a, b) => CARD_RANKS[a.value] - CARD_RANKS[b.value]);
-    cardToPlay = sorted[0];
+  }
+  // 3. Leading A New Trick
+  else {
+    // Lead a suit where bot has low/safe cards to shed safely
+    const suitCounts = { "♠": 0, "♥": 0, "♦": 0, "♣": 0 };
+    bot.cards.forEach(c => suitCounts[c.suit]++);
+
+    // Find suit with few cards to exhaust it, or lowest card
+    const sortedHand = [...bot.cards].sort((a, b) => CARD_RANKS[a.value] - CARD_RANKS[b.value]);
+    cardToPlay = sortedHand[0];
   }
 
   playTurn(roomId, bot.id, [cardToPlay], cardToPlay.value);
@@ -275,7 +318,6 @@ function playTurn(roomId, socketId, cards, claim) {
 
     clearRoomTimer(room);
 
-    // Remove card reliably
     const cardIdx = player.cards.findIndex(c => c.suit === playedCard.suit && c.value === playedCard.value);
     if (cardIdx !== -1) player.cards.splice(cardIdx, 1);
     if (!player.isBot) io.to(player.id).emit("yourCards", player.cards);
@@ -376,7 +418,7 @@ function playTurn(roomId, socketId, cards, claim) {
       return;
     }
 
-    // Next player normal rotation
+    // Normal switch
     room.currentTurnIndex = nextTurnIndex(room);
     io.to(roomId).emit("gameState", sanitizeState(room));
     startTurnTimer(roomId);
@@ -446,7 +488,7 @@ function endGame(roomId) {
 }
 
 io.on("connection", (socket) => {
-  socket.on("joinGame", ({ roomId, username, mode, gameType }) => {
+  socket.on("joinGame", ({ roomId, username, mode, gameType, botCount }) => {
     socket.join(roomId);
 
     if (!rooms[roomId]) {
@@ -473,7 +515,15 @@ io.on("connection", (socket) => {
       rooms[roomId].players.push({ id: socket.id, name: username || "Player 1", cards: [], isBot: false });
 
       if (mode === "bot") {
-        rooms[roomId].players.push({ id: "bot-ai", name: "🤖 Himalayan AI", cards: [], isBot: true });
+        const count = Math.min(Math.max(parseInt(botCount) || 1, 1), 5);
+        for (let i = 0; i < count; i++) {
+          rooms[roomId].players.push({
+            id: "bot-" + (i + 1),
+            name: BOT_NAMES[i] || `🤖 Bot ${i + 1}`,
+            cards: [],
+            isBot: true
+          });
+        }
       }
     } else {
       const room = rooms[roomId];
@@ -517,5 +567,5 @@ io.on("connection", (socket) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`Himalayan Card Engine running on Port ${PORT}`);
+  console.log(`Himalayan Arena Online on Port ${PORT}`);
 });
