@@ -1,0 +1,9 @@
+{
+  "appId": "com.himalayan.battlehub",
+  "appName": "Himalayan Battle Hub",
+  "webDir": "public",
+  "server": {
+    "url": "https://himalayan-game-battle.onrender.com",
+    "cleartext": true
+  }
+}
