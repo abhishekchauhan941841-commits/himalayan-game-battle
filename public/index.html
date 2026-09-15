@@ -103,9 +103,7 @@
         </div>
       </div>
 
-      <!-- CASINO STADIUM PODS & TABLE -->
       <div class="casino-stadium">
-        <!-- TOP PLAYER POD (OPPONENT / BOT) -->
         <div class="player-pod" id="pod-opponent">
           <div class="pod-avatar" id="opp-avatar">🤖</div>
           <div class="pod-details">
@@ -114,7 +112,6 @@
           </div>
         </div>
 
-        <!-- GREEN FELT CASINO TABLE -->
         <div class="green-poker-table">
           <div class="table-glass-bar">
             <div id="suit-indicator">सूट: <span id="lead-suit-display" style="color:#fff;">कोई नहीं</span></div>
@@ -122,14 +119,10 @@
             <div>Turn: <span id="current-turn" style="color:#fff;">-</span></div>
           </div>
 
-          <!-- ANIMATED TRICK CARDS IN CENTER -->
           <div class="trick-throw-zone" id="trick-throw-zone"></div>
-
-          <!-- CUT / DAAND ALERT BANNER -->
           <div class="cut-alert-box" id="cut-alert-box">💥 CUT LAGA!</div>
         </div>
 
-        <!-- BOTTOM PLAYER POD (YOU) -->
         <div class="player-pod" id="pod-me">
           <div class="pod-avatar">👤</div>
           <div class="pod-details">
@@ -139,10 +132,8 @@
         </div>
       </div>
 
-      <!-- LIVE COMMENTARY -->
       <div id="action-announcement">Waiting for match to begin...</div>
 
-      <!-- CONTROLS -->
       <div class="action-controls">
         <div id="bluff-claim-wrapper" style="display:none;">
           <label>Claim Value:</label>
@@ -159,7 +150,6 @@
         <button type="button" id="btn-challenge" class="btn-danger" style="display:none;">🔥 CHALLENGE / BLUFF!</button>
       </div>
 
-      <!-- HAND CARDS -->
       <div class="hand-section">
         <h3>
           <span>आपके पत्ते (<span id="hand-count">0</span>)</span>
@@ -238,7 +228,30 @@
       switchView("view-arena");
     }
 
-    // Attach click handlers
+    // Helper: Create Casino Grade Card DOM
+    function createCardElement(card) {
+      var el = document.createElement("div");
+      var isRed = (card.suit === "♥" || card.suit === "♦");
+      el.className = "card " + (isRed ? "red" : "");
+
+      var topPip = document.createElement("div");
+      topPip.className = "card-pip-top";
+      topPip.innerHTML = "<span>" + card.value + "</span><span>" + card.suit + "</span>";
+
+      var centerSuit = document.createElement("div");
+      centerSuit.className = "card-center-suit";
+      centerSuit.innerText = card.suit;
+
+      var botPip = document.createElement("div");
+      botPip.className = "card-pip-bottom";
+      botPip.innerHTML = "<span>" + card.value + "</span><span>" + card.suit + "</span>";
+
+      el.appendChild(topPip);
+      el.appendChild(centerSuit);
+      el.appendChild(botPip);
+      return el;
+    }
+
     document.getElementById("card-chudapatti").onclick = function() { selectGame("chudapatti"); };
     document.getElementById("btn-chuda-action").onclick = function(e) { e.stopPropagation(); selectGame("chudapatti"); };
 
@@ -275,7 +288,6 @@
       if (socket) socket.emit("challenge", { roomId: currentRoom });
     };
 
-    // Socket listeners
     if (socket) {
       socket.on("yourCards", function(cards) {
         myCards = cards;
@@ -291,7 +303,6 @@
         var turnText = cp ? cp.name : "-";
         document.getElementById("current-turn").innerText = turnText;
 
-        // Player Pod Updates
         var myName = getName();
         var me = state.players.find(p => p.name === myName) || state.players[0];
         var opp = state.players.find(p => p.name !== myName) || state.players[1];
@@ -312,16 +323,12 @@
           else oppPod.classList.remove("active-turn");
         }
 
-        // Render Animated Trick Cards in Table Center
         var feltZone = document.getElementById("trick-throw-zone");
 
-        // If server cleared trick, trigger sweep out animation first
         if (!state.currentTrick || state.currentTrick.length === 0) {
           var existingCards = feltZone.querySelectorAll(".thrown-card-pod");
           if (existingCards.length > 0) {
-            existingCards.forEach(cardPod => {
-              cardPod.classList.add("sweep-out");
-            });
+            existingCards.forEach(cardPod => { cardPod.classList.add("sweep-out"); });
             setTimeout(() => { feltZone.innerHTML = ""; }, 500);
           } else {
             feltZone.innerHTML = "";
@@ -339,12 +346,7 @@
           label.className = "thrown-player-badge";
           label.innerText = t.playerName;
 
-          var c = t.card;
-          var isRed = (c.suit === "♥" || c.suit === "♦");
-          var cardEl = document.createElement("div");
-          cardEl.className = "card " + (isRed ? "red" : "");
-          cardEl.innerHTML = "<span>" + c.value + "</span><span style='font-size:1.3rem;'>" + c.suit + "</span>";
-
+          var cardEl = createCardElement(t.card);
           box.appendChild(label);
           box.appendChild(cardEl);
           feltZone.appendChild(box);
@@ -367,14 +369,12 @@
         var ann = document.getElementById("action-announcement");
         if (ann) ann.innerText = msg;
 
-        // Cut Alert Flash Animation
         if (msg.includes("कट मारा") || msg.includes("सारे पत्ते उनको उठाने पड़े")) {
           var alertBanner = document.getElementById("cut-alert-box");
           alertBanner.style.display = "block";
           alertBanner.innerText = "💥 CUT LAGA! " + msg;
           setTimeout(function() { alertBanner.style.display = "none"; }, 2500);
 
-          // Fly cards towards penalty receiver
           var myName = getName();
           var isPenaltyToMe = msg.includes(myName);
           var existingCards = document.querySelectorAll("#trick-throw-zone .thrown-card-pod");
@@ -386,12 +386,8 @@
 
       socket.on("gameOver", function(data) {
         var res = "🏆 मैच समाप्त!\n\n";
-        if (data.winners && data.winners.length > 0) {
-          res += "🥇 1st Winner: " + data.winners[0] + "\n";
-        }
-        if (data.loser) {
-          res += "❌ चुड़ा: " + data.loser + "\n";
-        }
+        if (data.winners && data.winners.length > 0) res += "🥇 1st Winner: " + data.winners[0] + "\n";
+        if (data.loser) res += "❌ चुड़ा: " + data.loser + "\n";
         alert(res);
       });
     }
@@ -404,18 +400,7 @@
       document.getElementById("my-card-count").innerText = myCards.length;
 
       myCards.forEach(function(card) {
-        var el = document.createElement("div");
-        var isRed = (card.suit === "♥" || card.suit === "♦");
-        el.className = "card " + (isRed ? "red" : "");
-
-        var valSpan = document.createElement("span");
-        valSpan.innerText = card.value;
-        var suitSpan = document.createElement("span");
-        suitSpan.style.fontSize = "1.3rem";
-        suitSpan.innerText = card.suit;
-
-        el.appendChild(valSpan);
-        el.appendChild(suitSpan);
+        var el = createCardElement(card);
 
         el.onclick = function() {
           if (selectedGame === "chudapatti") {

@@ -57,6 +57,7 @@ function sanitizeState(room) {
     pileCount: room.pile.length,
     lastPlay: room.lastPlay,
     gameActive: room.gameActive,
+    isResolving: room.isResolving,
     winners: room.winners,
     loser: room.loser
   };
@@ -68,7 +69,7 @@ function getActivePlayers(room) {
 
 function startTurnTimer(roomId) {
   const room = rooms[roomId];
-  if (!room || !room.gameActive) return;
+  if (!room || !room.gameActive || room.isResolving) return;
 
   if (room.timer) clearInterval(room.timer);
   room.timeLeft = TURN_TIMEOUT_SEC;
@@ -77,7 +78,6 @@ function startTurnTimer(roomId) {
   const currentPlayer = room.players[room.currentTurnIndex];
   if (!currentPlayer || currentPlayer.isSafe) return;
 
-  // Bot Turn Trigger
   if (currentPlayer.isBot) {
     setTimeout(() => {
       executeBotTurn(roomId);
@@ -135,7 +135,6 @@ function executeBotTurn(roomId) {
     return;
   }
 
-  // Chudapatti Bot Move
   let cardToPlay;
   if (room.isFirstTurn) {
     const aceSpade = bot.cards.find(c => c.suit === "♠" && c.value === "A");
@@ -359,7 +358,7 @@ function playTurn(roomId, socketId, cards, claim) {
       return;
     }
 
-    // Normal switch to next player
+    // Normal switch
     room.currentTurnIndex = nextTurnIndex(room);
     io.to(roomId).emit("gameState", sanitizeState(room));
     startTurnTimer(roomId);
