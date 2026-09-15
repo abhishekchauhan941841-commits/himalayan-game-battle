@@ -18,6 +18,8 @@ if (MONGO_URI) {
     .catch(err => console.error("Mongo Error:", err));
 }
 
+app.get("/health", (req, res) => res.status(200).send("OK"));
+
 app.use(express.static(path.join(__dirname, "public")));
 
 const rooms = {};
