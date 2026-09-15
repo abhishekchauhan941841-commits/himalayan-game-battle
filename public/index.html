@@ -17,24 +17,25 @@
 
     <!-- STEP 1: GAME SELECTOR SCREEN -->
     <div id="screen-game-select" class="screen-view active">
-      <h2 class="section-title">Select Your Game</h2>
+            <h2 class="section-title">Select Your Game</h2>
       <div class="game-cards-grid">
-        <div class="game-card featured" onclick="selectGame(chudapatti)">
-          <div class="card-tag">POPULAR</div>
+        <div class="game-card featured" onclick="selectGame('chudapatti')">
+          <div class="card-tag">TRADITIONAL</div>
           <div class="card-icon">🃏</div>
-          <h3>Chudapatti (Bluff)</h3>
-          <p>Test your psychological bluffing skills in this classic fast-paced Himalayan deception card battle.</p>
+          <h3>Chudapatti</h3>
+          <p>Traditional Pahadi card shedding battle. Match runs, discard pairs, and finish cards first.</p>
           <button class="btn-primary">Play Chudapatti</button>
         </div>
 
-        <div class="game-card" onclick="selectGame(baghchal)">
-          <div class="card-tag coming-soon">STRATEGY</div>
-          <div class="card-icon">🐅</div>
-          <h3>Bagh-Chal (Tiger & Goat)</h3>
-          <p>Ancient Himalayan board game of tigers vs goats. Trap the predator or feast on the herd.</p>
-          <button class="btn-secondary">Play Bagh-Chal</button>
+        <div class="game-card" onclick="selectGame('bluff')">
+          <div class="card-tag" style="background: linear-gradient(135deg, #f59e0b, #d97706);">DECEPTION</div>
+          <div class="card-icon">🎭</div>
+          <h3>Bluff</h3>
+          <p>High-stakes psychological card game. Declare false claims, catch liars, or take the pile!</p>
+          <button class="btn-accent">Play Bluff</button>
         </div>
       </div>
+    </div>
     </div>
 
     <!-- STEP 2: MODE SELECTOR SCREEN -->

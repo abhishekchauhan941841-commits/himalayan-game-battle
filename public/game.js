@@ -14,7 +14,7 @@ function showScreen(screenId) {
 
 function selectGame(game) {
   selectedGame = game;
-  document.getElementById("selected-game-title").innerText = (game === "chudapatti" ? "Chudapatti (Bluff)" : "Bagh-Chal") + " Battle Modes";
+  document.getElementById("selected-game-title").innerText = (game === "chudapatti" ? "Chudapatti" : "Bluff") + " Battle Modes";
   showScreen("screen-mode-select");
 }
 
