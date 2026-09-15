@@ -103,61 +103,82 @@ button { padding: 8px 18px; border-radius: 8px; border: none; font-weight: 700; 
 
 .thrown-player-badge { font-size: 0.75rem; color: #fde047; font-weight: bold; margin-bottom: 5px; text-shadow: 0 2px 4px rgba(0,0,0,0.9); }
 
-/* REALISTIC CASINO PLAYING CARD DESIGN */
+/* HIGH VISIBILITY REALISTIC PLAYING CARDS */
 .card {
-  width: 62px;
-  height: 92px;
+  width: 72px;
+  height: 106px;
   background: #ffffff;
-  border-radius: 6px;
+  border-radius: 8px;
   position: relative;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.6), inset 0 0 4px rgba(0,0,0,0.1);
-  border: 1px solid #d1d5db;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.65), inset 0 0 3px rgba(0,0,0,0.15);
+  border: 1.5px solid #cbd5e1;
   cursor: pointer;
   transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
   user-select: none;
   overflow: hidden;
-  color: #111827;
+  color: #0f172a;
 }
 
-.card.red { color: #dc2626; }
+.card.red { 
+  color: #dc2626; 
+}
 
-/* Corner pips */
+/* Big Bold Corner Pips */
 .card-pip-top {
   position: absolute;
-  top: 3px;
-  left: 4px;
+  top: 4px;
+  left: 5px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  line-height: 0.9;
+  line-height: 0.95;
   font-weight: 900;
-  font-size: 0.82rem;
+  font-size: 1.15rem;
 }
-.card-pip-bottom {
-  position: absolute;
-  bottom: 3px;
-  right: 4px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  line-height: 0.9;
-  font-weight: 900;
-  font-size: 0.82rem;
-  transform: rotate(180deg);
+.card-pip-top span:last-child {
+  font-size: 1rem;
+  margin-top: 1px;
 }
 
-/* Center suit emblem */
+.card-pip-bottom {
+  position: absolute;
+  bottom: 4px;
+  right: 5px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 0.95;
+  font-weight: 900;
+  font-size: 1.15rem;
+  transform: rotate(180deg);
+}
+.card-pip-bottom span:last-child {
+  font-size: 1rem;
+  margin-top: 1px;
+}
+
+/* Extra Large Center Suit Watermark */
 .card-center-suit {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  font-size: 2rem;
-  opacity: 0.9;
+  font-size: 2.6rem;
+  font-weight: 900;
+  opacity: 0.92;
 }
 
-.card:hover { transform: translateY(-8px); border-color: #38bdf8; }
-.card.selected { transform: translateY(-16px); border-color: #38bdf8; box-shadow: 0 0 16px #38bdf8; background: #f0f9ff; }
+.card:hover { 
+  transform: translateY(-10px); 
+  border-color: #38bdf8; 
+  box-shadow: 0 10px 20px rgba(56, 189, 248, 0.4);
+}
+.card.selected { 
+  transform: translateY(-18px); 
+  border-color: #38bdf8; 
+  box-shadow: 0 0 20px #38bdf8; 
+  background: #f0f9ff; 
+}
 
 /* ALERT BANNER */
 .cut-alert-box { display: none; position: absolute; top: 38%; background: linear-gradient(135deg, #ef4444, #b91c1c); color: white; padding: 12px 28px; border-radius: 30px; font-weight: 900; font-size: 1.15rem; box-shadow: 0 0 35px rgba(239, 68, 68, 0.95); border: 2px solid #fff; z-index: 100; animation: shakeAlert 0.4s ease-in-out infinite alternate; }
