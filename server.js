@@ -57,7 +57,6 @@ function sanitizeState(room) {
     pileCount: room.pile.length,
     lastPlay: room.lastPlay,
     gameActive: room.gameActive,
-    isResolving: room.isResolving,
     winners: room.winners,
     loser: room.loser
   };
@@ -69,17 +68,20 @@ function getActivePlayers(room) {
 
 function startTurnTimer(roomId) {
   const room = rooms[roomId];
-  if (!room || !room.gameActive || room.isResolving) return;
+  if (!room || !room.gameActive) return;
 
   if (room.timer) clearInterval(room.timer);
   room.timeLeft = TURN_TIMEOUT_SEC;
   io.to(roomId).emit("timerUpdate", { timeLeft: room.timeLeft, total: TURN_TIMEOUT_SEC });
 
   const currentPlayer = room.players[room.currentTurnIndex];
-  if (!currentPlayer) return;
+  if (!currentPlayer || currentPlayer.isSafe) return;
 
+  // Bot Turn Trigger
   if (currentPlayer.isBot) {
-    setTimeout(() => { executeBotTurn(roomId); }, 1500);
+    setTimeout(() => {
+      executeBotTurn(roomId);
+    }, 1200);
     return;
   }
 
@@ -101,8 +103,8 @@ function handleTimeout(roomId) {
   const cp = room.players[room.currentTurnIndex];
   if (!cp || cp.isSafe || cp.cards.length === 0) return;
 
-  io.to(roomId).emit("gameMessage", `⏰ ${cp.name} का टाइम खत्म! ऑटो कार्ड चल दिया गया।`);
-  
+  io.to(roomId).emit("gameMessage", `⏰ ${cp.name} का टाइम खत्म!`);
+
   let cardToPlay;
   if (room.gameType === "chudapatti" && room.leadSuit) {
     const matching = cp.cards.find(c => c.suit === room.leadSuit);
@@ -133,6 +135,7 @@ function executeBotTurn(roomId) {
     return;
   }
 
+  // Chudapatti Bot Move
   let cardToPlay;
   if (room.isFirstTurn) {
     const aceSpade = bot.cards.find(c => c.suit === "♠" && c.value === "A");
@@ -186,7 +189,7 @@ function dealAndStart(roomId) {
     });
     room.currentTurnIndex = starterIndex;
     const starter = room.players[starterIndex];
-    io.to(roomId).emit("gameMessage", `🃏 मैच शुरू! ${starter.name} के पास ♠A (हुकुम का इक्का) है, पहली चाल उनकी होगी।`);
+    io.to(roomId).emit("gameMessage", `🃏 मैच शुरू! ${starter.name} के पास ♠A (हुकुम का इक्का) है, पहली चाल उनकी है।`);
   } else {
     room.isFirstTurn = false;
     room.currentTurnIndex = 0;
@@ -294,7 +297,6 @@ function playTurn(roomId, socketId, cards, claim) {
 
       const penaltyPlayer = room.players[penaltyPlayerIndex];
 
-      // Delay 2.5s so both cards remain on screen clearly
       setTimeout(() => {
         if (!room.gameActive) return;
         const penaltyCards = room.currentTrick.map(t => t.card);
@@ -315,15 +317,15 @@ function playTurn(roomId, socketId, cards, claim) {
 
         io.to(roomId).emit("gameState", sanitizeState(room));
         startTurnTimer(roomId);
-      }, 2500);
+      }, 2000);
       return;
     }
 
-    // ROUND COMPLETE CONDITION (Same Suit)
+    // ROUND COMPLETE CONDITION
     const activePlayers = getActivePlayers(room);
     if (room.currentTrick.length >= activePlayers.length) {
       room.isResolving = true;
-      io.to(roomId).emit("gameMessage", `✨ दोनों ने चाल चल दी! पत्ते साफ़ हो रहे हैं...`);
+      io.to(roomId).emit("gameMessage", `✨ चाल पूरी हुई! पत्ते साफ़ हो रहे हैं...`);
       io.to(roomId).emit("gameState", sanitizeState(room));
 
       let highestVal = -1;
@@ -336,7 +338,6 @@ function playTurn(roomId, socketId, cards, claim) {
         }
       });
 
-      // Delay 2.2s so player can easily see opponent's card
       setTimeout(() => {
         if (!room.gameActive) return;
         room.pile.push(...room.currentTrick.map(t => t.card));
@@ -354,17 +355,18 @@ function playTurn(roomId, socketId, cards, claim) {
 
         io.to(roomId).emit("gameState", sanitizeState(room));
         startTurnTimer(roomId);
-      }, 2200);
+      }, 1800);
       return;
     }
 
+    // Normal switch to next player
     room.currentTurnIndex = nextTurnIndex(room);
     io.to(roomId).emit("gameState", sanitizeState(room));
     startTurnTimer(roomId);
     return;
   }
 
-  // BLUFF LOGIC
+  // Bluff logic
   if (room.timer) clearInterval(room.timer);
 
   player.cards = player.cards.filter(c => !cards.some(rc => rc.suit === c.suit && rc.value === c.value));
@@ -397,7 +399,7 @@ function handleChallenge(roomId, challengerId) {
 
   if (!penaltyReceiver.isBot) io.to(penaltyReceiver.id).emit("yourCards", penaltyReceiver.cards);
 
-  io.to(roomId).emit("gameMessage", `🔥 ${challenger.name} ने BLUFF पकड़ा! ${isBluff ? accused.name + " झूठ बोल रहा था!" : challenger.name + " का शक गलत था!"} सारे पत्ते ${penaltyReceiver.name} को मिले!`);
+  io.to(roomId).emit("gameMessage", `🔥 ${challenger.name} ने BLUFF पकड़ा! ${isBluff ? accused.name + " झूठ बोल रहा था!" : challenger.name + " का शक गलत था!"}`);
 
   room.pile = [];
   room.lastPlay = null;
@@ -495,5 +497,5 @@ io.on("connection", (socket) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`🏔️ Himalayan Card Engine Live on Port ${PORT}`);
+  console.log(`Himalayan Card Engine running on Port ${PORT}`);
 });
