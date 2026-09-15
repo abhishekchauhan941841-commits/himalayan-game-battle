@@ -5,7 +5,7 @@
   margin: 0;
   padding: 0;
   font-family: "Outfit", sans-serif;
-  user-select: none;
+  user-select: auto;
 }
 
 body {
@@ -379,4 +379,16 @@ input:focus, select:focus {
   padding: 6px 12px;
   border-radius: 6px;
   font-size: 0.9rem;
+}
+.game-card, .mode-card, .action-card, button {
+  cursor: pointer !important;
+  pointer-events: auto !important;
+  position: relative;
+  z-index: 10;
+}
+.screen-view {
+  display: none !important;
+}
+.screen-view.active {
+  display: block !important;
 }
