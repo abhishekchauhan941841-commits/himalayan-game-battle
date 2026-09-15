@@ -5,12 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Himalayan Game Battle Arena</title>
   <link rel="stylesheet" href="style.css">
-  <style>
-    .bot-selector-wrapper { margin-top: 12px; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: bold; font-size: 0.85rem; }
-    .bot-select-dropdown { padding: 4px 10px; border-radius: 6px; background: #090d16; border: 1px solid #38bdf8; color: #fff; font-weight: bold; }
-    .opponents-ring { display: flex; gap: 10px; justify-content: center; align-items: center; flex-wrap: wrap; width: 100%; min-height: 52px; }
-    .toast-error { display: none; position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #dc2626; color: white; padding: 12px 24px; border-radius: 30px; font-weight: 800; font-size: 0.95rem; box-shadow: 0 10px 30px rgba(220, 38, 38, 0.7); z-index: 9999; border: 2px solid #fecaca; }
-  </style>
 </head>
 <body>
   <div id="toast-msg" class="toast-error">Error</div>
@@ -18,7 +12,7 @@
   <div class="hub-container">
     <header class="main-header">
       <div class="logo-badge">🏔️ HIMALAYAN BATTLE HUB</div>
-      <p class="subtitle">Traditional Strategic Arena with Instant Card Play</p>
+      <p class="subtitle">Traditional Strategic Arena with Circular Seating & Live Audio FX</p>
     </header>
 
     <div class="player-bar">
@@ -57,7 +51,7 @@
         <div class="mode-card">
           <div class="mode-icon">🤖</div>
           <h3>Play vs Smart AI</h3>
-          <p>Instant start with competitive AI and customizable bot count.</p>
+          <p>Instant circular table match with customizable bot count.</p>
           
           <div class="bot-selector-wrapper">
             <label>Bots (1 - 5):</label>
@@ -105,7 +99,7 @@
       </div>
     </div>
 
-    <!-- VIEW 4: CASINO ARENA -->
+    <!-- VIEW 4: CIRCULAR CASINO ARENA -->
     <div id="view-arena" class="screen-view">
       <div class="arena-top-bar">
         <div class="room-pill">Table: <span id="display-room-code">-</span></div>
@@ -123,9 +117,12 @@
         </div>
       </div>
 
-      <div class="casino-stadium">
-        <div class="opponents-ring" id="opponents-ring"></div>
+      <!-- CIRCULAR VIEWPORT WHERE TABLE & PLAYERS LIVE AROUND A CIRCLE -->
+      <div class="stadium-viewport" id="stadium-viewport">
+        <!-- Surrounding bots & players injected dynamically into fixed slots -->
+        <div id="arena-players-layer"></div>
 
+        <!-- GREEN FELT TABLE IN CENTER -->
         <div class="green-poker-table">
           <div class="table-glass-bar">
             <div id="suit-indicator">सूट: <span id="lead-suit-display" style="color:#fff;">कोई नहीं</span></div>
@@ -135,14 +132,6 @@
 
           <div class="trick-throw-zone" id="trick-throw-zone"></div>
           <div class="cut-alert-box" id="cut-alert-box">💥 CUT LAGA!</div>
-        </div>
-
-        <div class="player-pod" id="pod-me">
-          <div class="pod-avatar">👤</div>
-          <div class="pod-details">
-            <span class="pod-name" id="my-name-display">Player 1</span>
-            <span class="pod-meta"><strong id="my-card-count">0</strong> पत्ते बाकी</span>
-          </div>
         </div>
       </div>
 
@@ -167,7 +156,7 @@
       <div class="hand-section">
         <h3>
           <span>आपके पत्ते (<span id="hand-count">0</span>)</span>
-          <span style="color:#38bdf8; font-weight:bold; font-size:0.8rem;">💡 Tip: पत्ते पर क्लिक करते ही पत्ता चल दिया जाएगा!</span>
+          <span style="color:#38bdf8; font-weight:bold; font-size:0.8rem;">💡 Tip: अपनी बारी आने पर पत्ते पर क्लिक करें!</span>
         </h3>
         <div id="cards-hand" class="cards-container"></div>
       </div>
@@ -176,6 +165,61 @@
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
+    // --- SYNTHESIZED CASINO AUDIO FX ---
+    const AudioEngine = {
+      ctx: null,
+      init: function() {
+        if (!this.ctx) {
+          try { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {}
+        }
+      },
+      playCardSlide: function() {
+        this.init();
+        if (!this.ctx) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = "triangle";
+        osc.frequency.setValueAtTime(280, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(120, this.ctx.currentTime + 0.12);
+        gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.12);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.12);
+      },
+      playTurnBell: function() {
+        this.init();
+        if (!this.ctx) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(587.33, this.ctx.currentTime); // D5
+        osc.frequency.exponentialRampToValueAtTime(880, this.ctx.currentTime + 0.2); // A5
+        gain.gain.setValueAtTime(0.25, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.35);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.35);
+      },
+      playCutHorn: function() {
+        this.init();
+        if (!this.ctx) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = "sawtooth";
+        osc.frequency.setValueAtTime(180, this.ctx.currentTime);
+        osc.frequency.linearRampToValueAtTime(80, this.ctx.currentTime + 0.4);
+        gain.gain.setValueAtTime(0.4, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.4);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.4);
+      }
+    };
+
     var socket = null;
     try { if (typeof io !== "undefined") socket = io(); } catch(e) { console.error(e); }
 
@@ -211,6 +255,7 @@
     }
 
     function startBotMatch() {
+      AudioEngine.init();
       var pName = getName();
       var botCount = document.getElementById("bot-count-select").value;
       var botRoom = "BOT-" + Math.random().toString(36).substring(2, 7).toUpperCase();
@@ -222,6 +267,7 @@
     }
 
     function createRoom() {
+      AudioEngine.init();
       var pName = getName();
       var newRoom = "ROOM-" + Math.random().toString(36).substring(2, 6).toUpperCase();
       currentRoom = newRoom;
@@ -230,6 +276,7 @@
     }
 
     function joinRoom() {
+      AudioEngine.init();
       var inp = document.getElementById("input-room-code");
       var code = inp ? inp.value.trim().toUpperCase() : "";
       if (!code) return alert("Please enter room code!");
@@ -243,7 +290,6 @@
       document.getElementById("display-room-code").innerText = roomCode;
       document.getElementById("display-game-tag").innerText = tag;
       document.getElementById("btn-host-start").style.display = isHost ? "inline-block" : "none";
-      document.getElementById("my-name-display").innerText = getName();
 
       var isBluff = (selectedGame === "bluff");
       document.getElementById("bluff-claim-wrapper").style.display = isBluff ? "inline-block" : "none";
@@ -286,6 +332,7 @@
       if (socket) {
         socket.emit("playCards", { roomId: currentRoom, cards: cardList, claim: claimVal });
       }
+      AudioEngine.playCardSlide();
       selectedCards = [];
       renderHand();
     }
@@ -341,57 +388,76 @@
         document.getElementById("current-turn").innerText = turnText;
 
         var myName = getName();
-        var me = state.players.find(p => p.name === myName) || state.players[0];
-        isMyTurn = (cp && me && cp.name === me.name);
+        var wasMyTurn = isMyTurn;
+        isMyTurn = (cp && cp.name === myName);
+        if (!wasMyTurn && isMyTurn) AudioEngine.playTurnBell();
 
+        // RENDER DYNAMIC CIRCULAR SEATS AROUND TABLE
+        var layer = document.getElementById("arena-players-layer");
+        layer.innerHTML = "";
+
+        var me = state.players.find(p => p.name === myName) || state.players[0];
+        var others = state.players.filter(p => p.name !== myName);
+
+        // My Seat: Always Bottom Center
         if (me) {
-          document.getElementById("my-card-count").innerText = me.cardCount;
-          var myPod = document.getElementById("pod-me");
-          if (isMyTurn) myPod.classList.add("active-turn");
-          else myPod.classList.remove("active-turn");
+          var myPod = document.createElement("div");
+          myPod.className = "player-pod seat-bottom " + (isMyTurn ? "active-turn" : "");
+          myPod.innerHTML = "<div class='pod-avatar'>👤</div>" +
+                            "<div class='pod-details'>" +
+                              "<span class='pod-name'>" + me.name + "</span>" +
+                              "<span class='pod-meta'><strong>" + me.cardCount + "</strong> पत्ते" + (me.isSafe ? " (" + me.rankTitle + ")" : "") + "</span>" +
+                            "</div>";
+          layer.appendChild(myPod);
         }
 
-        var ring = document.getElementById("opponents-ring");
-        ring.innerHTML = "";
-        var opponents = state.players.filter(p => p.name !== myName);
+        // Circular position map for other bots/players based on count
+        var slotClasses = [];
+        if (others.length === 1) {
+          slotClasses = ["seat-top-center"];
+        } else if (others.length === 2) {
+          slotClasses = ["seat-mid-left", "seat-mid-right"];
+        } else if (others.length === 3) {
+          slotClasses = ["seat-mid-left", "seat-top-center", "seat-mid-right"];
+        } else if (others.length === 4) {
+          slotClasses = ["seat-mid-left", "seat-top-left", "seat-top-right", "seat-mid-right"];
+        } else {
+          slotClasses = ["seat-mid-left", "seat-top-left", "seat-top-center", "seat-top-right", "seat-mid-right"];
+        }
 
-        opponents.forEach(function(opp) {
+        others.forEach(function(p, i) {
+          var sClass = slotClasses[i] || "seat-top-center";
+          var isCurrent = (cp && cp.name === p.name);
           var pod = document.createElement("div");
-          pod.className = "player-pod " + ((cp && cp.name === opp.name) ? "active-turn" : "");
-
-          var av = document.createElement("div");
-          av.className = "pod-avatar";
-          av.innerText = opp.isBot ? "🤖" : "👤";
-
-          var details = document.createElement("div");
-          details.className = "pod-details";
-          details.innerHTML = "<span class='pod-name'>" + opp.name + "</span>" +
-                              "<span class='pod-meta'><strong>" + opp.cardCount + "</strong> पत्ते" +
-                              (opp.isSafe ? " (" + opp.rankTitle + ")" : "") + "</span>";
-
-          pod.appendChild(av);
-          pod.appendChild(details);
-          ring.appendChild(pod);
+          pod.className = "player-pod " + sClass + " " + (isCurrent ? "active-turn" : "");
+          pod.innerHTML = "<div class='pod-avatar'>" + (p.isBot ? "🤖" : "👤") + "</div>" +
+                          "<div class='pod-details'>" +
+                            "<span class='pod-name'>" + p.name + "</span>" +
+                            "<span class='pod-meta'><strong>" + p.cardCount + "</strong> पत्ते" + (p.isSafe ? " (" + p.rankTitle + ")" : "") + "</span>" +
+                          "</div>";
+          layer.appendChild(pod);
         });
 
+        // Center Trick Cards
         var feltZone = document.getElementById("trick-throw-zone");
-
         if (!state.currentTrick || state.currentTrick.length === 0) {
           var existingCards = feltZone.querySelectorAll(".thrown-card-pod");
           if (existingCards.length > 0) {
-            existingCards.forEach(cardPod => { cardPod.classList.add("sweep-out"); });
-            setTimeout(() => { feltZone.innerHTML = ""; }, 500);
+            existingCards.forEach(c => c.classList.add("sweep-out"));
+            setTimeout(() => { feltZone.innerHTML = ""; }, 400);
           } else {
             feltZone.innerHTML = "";
           }
           return;
         }
 
+        var prevCount = feltZone.querySelectorAll(".thrown-card-pod").length;
+        if (state.currentTrick.length > prevCount) AudioEngine.playCardSlide();
+
         feltZone.innerHTML = "";
         state.currentTrick.forEach(function(t) {
           var box = document.createElement("div");
-          var isFromMe = (t.playerName === myName);
-          box.className = "thrown-card-pod " + (isFromMe ? "from-bottom" : "from-top");
+          box.className = "thrown-card-pod";
 
           var label = document.createElement("div");
           label.className = "thrown-player-badge";
@@ -421,17 +487,14 @@
         if (ann) ann.innerText = msg;
 
         if (msg.includes("कट मारा") || msg.includes("सारे पत्ते उनको उठाने पड़े")) {
+          AudioEngine.playCutHorn();
           var alertBanner = document.getElementById("cut-alert-box");
           alertBanner.style.display = "block";
           alertBanner.innerText = "💥 CUT LAGA! " + msg;
           setTimeout(function() { alertBanner.style.display = "none"; }, 2500);
 
-          var myName = getName();
-          var isPenaltyToMe = msg.includes(myName);
           var existingCards = document.querySelectorAll("#trick-throw-zone .thrown-card-pod");
-          existingCards.forEach(c => {
-            c.classList.add(isPenaltyToMe ? "give-penalty-bottom" : "give-penalty-top");
-          });
+          existingCards.forEach(c => c.classList.add("penalty-out"));
         }
       });
 
@@ -448,14 +511,12 @@
       if (!box) return;
       box.innerHTML = "";
       document.getElementById("hand-count").innerText = myCards.length;
-      document.getElementById("my-card-count").innerText = myCards.length;
 
       myCards.forEach(function(card) {
         var el = createCardElement(card);
 
         el.onclick = function() {
           if (selectedGame === "chudapatti") {
-            // Chudapatti: Direct 1-Click Throw if it's your turn!
             if (isMyTurn) {
               sendCardPlay([card]);
             } else {
