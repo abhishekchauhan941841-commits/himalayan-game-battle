@@ -57,7 +57,7 @@ function sanitizeState(room) {
     pileCount: room.pile.length,
     lastPlay: room.lastPlay,
     gameActive: room.gameActive,
-    isResolving: room.isResolving,
+    isResolving: !!room.isResolving,
     winners: room.winners,
     loser: room.loser
   };
@@ -67,11 +67,18 @@ function getActivePlayers(room) {
   return room.players.filter(p => !p.isSafe);
 }
 
+function clearRoomTimer(room) {
+  if (room.timer) {
+    clearInterval(room.timer);
+    room.timer = null;
+  }
+}
+
 function startTurnTimer(roomId) {
   const room = rooms[roomId];
   if (!room || !room.gameActive || room.isResolving) return;
 
-  if (room.timer) clearInterval(room.timer);
+  clearRoomTimer(room);
   room.timeLeft = TURN_TIMEOUT_SEC;
   io.to(roomId).emit("timerUpdate", { timeLeft: room.timeLeft, total: TURN_TIMEOUT_SEC });
 
@@ -81,16 +88,21 @@ function startTurnTimer(roomId) {
   if (currentPlayer.isBot) {
     setTimeout(() => {
       executeBotTurn(roomId);
-    }, 1200);
+    }, 1100);
     return;
   }
 
   room.timer = setInterval(() => {
+    if (!room || !room.gameActive || room.isResolving) {
+      clearRoomTimer(room);
+      return;
+    }
+
     room.timeLeft -= 1;
     io.to(roomId).emit("timerUpdate", { timeLeft: room.timeLeft, total: TURN_TIMEOUT_SEC });
 
     if (room.timeLeft <= 0) {
-      clearInterval(room.timer);
+      clearRoomTimer(room);
       handleTimeout(roomId);
     }
   }, 1000);
@@ -213,11 +225,13 @@ function checkPlayerVictory(roomId, player) {
     io.to(roomId).emit("gameMessage", `🎉 ${player.name} के सारे पत्ते खत्म! वो safe होकर ${player.rankTitle} बने!`);
 
     const remaining = getActivePlayers(room);
-    if (remaining.length === 1) {
-      const loserPlayer = remaining[0];
-      loserPlayer.isSafe = true;
-      loserPlayer.rankTitle = "चुड़ा";
-      room.loser = loserPlayer.name;
+    if (remaining.length <= 1) {
+      if (remaining.length === 1) {
+        const loserPlayer = remaining[0];
+        loserPlayer.isSafe = true;
+        loserPlayer.rankTitle = "चुड़ा";
+        room.loser = loserPlayer.name;
+      }
       endGame(roomId);
       return true;
     }
@@ -242,6 +256,7 @@ function playTurn(roomId, socketId, cards, claim) {
   if (!player || player.id !== socketId || player.isSafe) return;
 
   const playedCard = cards[0];
+  if (!playedCard) return;
 
   if (room.gameType === "chudapatti") {
     if (room.isFirstTurn) {
@@ -258,9 +273,11 @@ function playTurn(roomId, socketId, cards, claim) {
       return;
     }
 
-    if (room.timer) clearInterval(room.timer);
+    clearRoomTimer(room);
 
-    player.cards = player.cards.filter(c => !(c.suit === playedCard.suit && c.value === playedCard.value));
+    // Remove card reliably
+    const cardIdx = player.cards.findIndex(c => c.suit === playedCard.suit && c.value === playedCard.value);
+    if (cardIdx !== -1) player.cards.splice(cardIdx, 1);
     if (!player.isBot) io.to(player.id).emit("yourCards", player.cards);
 
     if (!room.leadSuit) {
@@ -274,7 +291,8 @@ function playTurn(roomId, socketId, cards, claim) {
     });
 
     room.lastPlay = { player: player.name, cards: [playedCard], claim: playedCard.value };
-    checkPlayerVictory(roomId, player);
+    const gameEnded = checkPlayerVictory(roomId, player);
+    if (gameEnded) return;
 
     // CUT / DAAND CONDITION
     if (playedCard.suit !== room.leadSuit) {
@@ -297,7 +315,7 @@ function playTurn(roomId, socketId, cards, claim) {
       const penaltyPlayer = room.players[penaltyPlayerIndex];
 
       setTimeout(() => {
-        if (!room.gameActive) return;
+        if (!rooms[roomId] || !room.gameActive) return;
         const penaltyCards = room.currentTrick.map(t => t.card);
         penaltyPlayer.cards.push(...penaltyCards, ...room.pile);
         room.pile = [];
@@ -316,7 +334,7 @@ function playTurn(roomId, socketId, cards, claim) {
 
         io.to(roomId).emit("gameState", sanitizeState(room));
         startTurnTimer(roomId);
-      }, 2000);
+      }, 1600);
       return;
     }
 
@@ -338,7 +356,7 @@ function playTurn(roomId, socketId, cards, claim) {
       });
 
       setTimeout(() => {
-        if (!room.gameActive) return;
+        if (!rooms[roomId] || !room.gameActive) return;
         room.pile.push(...room.currentTrick.map(t => t.card));
         const winner = room.players[trickWinnerIndex];
         io.to(roomId).emit("gameMessage", `👑 ${winner.name} का पत्ता सबसे बड़ा था! अगली चाल उनकी है।`);
@@ -354,11 +372,11 @@ function playTurn(roomId, socketId, cards, claim) {
 
         io.to(roomId).emit("gameState", sanitizeState(room));
         startTurnTimer(roomId);
-      }, 1800);
+      }, 1500);
       return;
     }
 
-    // Normal switch
+    // Next player normal rotation
     room.currentTurnIndex = nextTurnIndex(room);
     io.to(roomId).emit("gameState", sanitizeState(room));
     startTurnTimer(roomId);
@@ -366,7 +384,7 @@ function playTurn(roomId, socketId, cards, claim) {
   }
 
   // Bluff logic
-  if (room.timer) clearInterval(room.timer);
+  clearRoomTimer(room);
 
   player.cards = player.cards.filter(c => !cards.some(rc => rc.suit === c.suit && rc.value === c.value));
   if (!player.isBot) io.to(player.id).emit("yourCards", player.cards);
@@ -375,7 +393,8 @@ function playTurn(roomId, socketId, cards, claim) {
   room.currentClaim = claim;
   room.lastPlay = { player: player.name, cards: cards, claim: claim, playerId: player.id };
 
-  checkPlayerVictory(roomId, player);
+  const won = checkPlayerVictory(roomId, player);
+  if (won) return;
 
   room.currentTurnIndex = nextTurnIndex(room);
   io.to(roomId).emit("gameState", sanitizeState(room));
@@ -384,9 +403,9 @@ function playTurn(roomId, socketId, cards, claim) {
 
 function handleChallenge(roomId, challengerId) {
   const room = rooms[roomId];
-  if (!room || !room.gameActive || !room.lastPlay) return;
+  if (!room || !room.gameActive || !room.lastPlay || room.isResolving) return;
 
-  if (room.timer) clearInterval(room.timer);
+  clearRoomTimer(room);
 
   const challenger = room.players.find(p => p.id === challengerId);
   const accused = room.players.find(p => p.id === room.lastPlay.playerId);
@@ -415,8 +434,10 @@ function handleChallenge(roomId, challengerId) {
 
 function endGame(roomId) {
   const room = rooms[roomId];
-  if (room.timer) clearInterval(room.timer);
+  if (!room) return;
+  clearRoomTimer(room);
   room.gameActive = false;
+  room.isResolving = false;
   io.to(roomId).emit("gameOver", {
     winners: room.winners,
     loser: room.loser,
@@ -465,7 +486,7 @@ io.on("connection", (socket) => {
     io.to(roomId).emit("gameState", sanitizeState(room));
 
     if (mode === "bot" && !room.gameActive) {
-      setTimeout(() => { dealAndStart(roomId); }, 800);
+      setTimeout(() => { dealAndStart(roomId); }, 600);
     }
   });
 
@@ -486,7 +507,7 @@ io.on("connection", (socket) => {
       const room = rooms[rId];
       room.players = room.players.filter(p => p.id !== socket.id);
       if (room.players.length === 0 || (room.isBotGame && room.players.every(p => p.isBot))) {
-        if (room.timer) clearInterval(room.timer);
+        clearRoomTimer(room);
         delete rooms[rId];
       } else {
         io.to(rId).emit("gameState", sanitizeState(room));
