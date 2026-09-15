@@ -1,14 +1,14 @@
 * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-body { background: #060911; color: #f8fafc; min-height: 100vh; display: flex; justify-content: center; align-items: center; padding: 8px; overflow-x: hidden; }
+body { background: #060911; color: #f8fafc; min-height: 100vh; display: flex; justify-content: center; align-items: center; padding: 6px; overflow-x: hidden; }
 
-.hub-container { width: 100%; max-width: 1080px; background: #0c1427; border: 1px solid #1e293b; border-radius: 24px; padding: 16px; box-shadow: 0 25px 60px rgba(0,0,0,0.9); position: relative; }
-.main-header { text-align: center; margin-bottom: 6px; }
-.logo-badge { font-size: 1.5rem; font-weight: 900; color: #38bdf8; letter-spacing: 1px; }
-.subtitle { color: #94a3b8; font-size: 0.78rem; }
+.hub-container { width: 100%; max-width: 1080px; background: #0c1427; border: 1px solid #1e293b; border-radius: 24px; padding: 14px; box-shadow: 0 25px 60px rgba(0,0,0,0.9); position: relative; }
+.main-header { text-align: center; margin-bottom: 4px; }
+.logo-badge { font-size: 1.45rem; font-weight: 900; color: #38bdf8; letter-spacing: 1px; }
+.subtitle { color: #94a3b8; font-size: 0.76rem; }
 
-.player-bar { display: flex; justify-content: center; align-items: center; gap: 8px; margin-bottom: 8px; background: #152238; padding: 5px 12px; border-radius: 10px; }
-.player-bar label { font-weight: bold; color: #cbd5e1; font-size: 0.8rem; }
-.player-bar input { width: 160px; padding: 4px 10px; border-radius: 6px; border: 1px solid #334155; background: #090d16; color: #fff; font-weight: bold; font-size: 0.85rem; }
+.player-bar { display: flex; justify-content: center; align-items: center; gap: 8px; margin-bottom: 6px; background: #152238; padding: 4px 12px; border-radius: 10px; }
+.player-bar label { font-weight: bold; color: #cbd5e1; font-size: 0.78rem; }
+.player-bar input { width: 150px; padding: 3px 8px; border-radius: 6px; border: 1px solid #334155; background: #090d16; color: #fff; font-weight: bold; font-size: 0.82rem; }
 
 .screen-view { display: none; }
 .screen-view.active { display: block !important; }
@@ -32,27 +32,23 @@ button { padding: 8px 18px; border-radius: 8px; border: none; font-weight: 700; 
 .btn-success { background: #10b981; color: white; }
 .btn-danger { background: #ef4444; color: white; }
 
-.join-input-group { display: flex; gap: 8px; margin-top: 10px; }
-.join-input-group input { flex: 1; padding: 8px; border-radius: 8px; border: 1px solid #334155; background: #090d16; color: white; text-transform: uppercase; font-weight: bold; }
-
-/* ARENA HEADER */
 .arena-top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
-.room-pill, .mode-pill { background: #152238; border: 1px solid #334155; padding: 4px 10px; border-radius: 6px; font-weight: 700; font-size: 0.78rem; color: #38bdf8; }
+.room-pill, .mode-pill { background: #152238; border: 1px solid #334155; padding: 3px 10px; border-radius: 6px; font-weight: 700; font-size: 0.78rem; color: #38bdf8; }
 
 #timer-container { margin-bottom: 6px; }
-.timer-meta { display: flex; justify-content: space-between; font-weight: bold; margin-bottom: 3px; font-size: 0.75rem; }
+.timer-meta { display: flex; justify-content: space-between; font-weight: bold; margin-bottom: 2px; font-size: 0.74rem; }
 .timer-track { width: 100%; background: #1e293b; height: 6px; border-radius: 4px; overflow: hidden; }
 #timer-bar { width: 100%; height: 100%; background: #22c55e; transition: width 1s linear, background-color 0.3s; }
 
-/* CASINO STADIUM AROUND TABLE (RADIAL CIRCLE SEATING) */
-.stadium-viewport {
+/* TRUE CIRCULAR CASINO ARENA */
+.circular-arena-wrapper {
   position: relative;
   width: 100%;
   height: 380px;
   display: flex;
   justify-content: center;
   align-items: center;
-  margin: 6px 0;
+  margin: 4px 0;
 }
 
 .green-poker-table {
@@ -69,7 +65,7 @@ button { padding: 8px 18px; border-radius: 8px; border: none; font-weight: 700; 
   align-items: center;
   box-shadow: inset 0 0 50px rgba(0,0,0,0.85), 0 15px 35px rgba(0,0,0,0.8);
   overflow: hidden;
-  z-index: 1;
+  z-index: 2;
 }
 
 .table-glass-bar {
@@ -78,7 +74,7 @@ button { padding: 8px 18px; border-radius: 8px; border: none; font-weight: 700; 
   display: flex;
   gap: 16px;
   background: rgba(0,0,0,0.6);
-  padding: 4px 14px;
+  padding: 3px 14px;
   border-radius: 20px;
   font-size: 0.82rem;
   font-weight: bold;
@@ -86,7 +82,7 @@ button { padding: 8px 18px; border-radius: 8px; border: none; font-weight: 700; 
   z-index: 5;
 }
 
-/* CIRCULAR SEAT PODS */
+/* RADIAL PODS */
 .player-pod {
   position: absolute;
   display: flex;
@@ -96,43 +92,35 @@ button { padding: 8px 18px; border-radius: 8px; border: none; font-weight: 700; 
   border: 2px solid #334155;
   padding: 4px 12px;
   border-radius: 24px;
-  transition: all 0.3s ease;
+  transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
   z-index: 10;
   box-shadow: 0 4px 12px rgba(0,0,0,0.6);
+  transform: translate(-50%, -50%);
 }
 
 .player-pod.active-turn {
-  border-color: #facc15;
-  box-shadow: 0 0 22px rgba(250, 204, 21, 0.85);
-  transform: scale(1.08);
+  border-color: #facc15 !important;
+  box-shadow: 0 0 25px rgba(250, 204, 21, 0.9) !important;
+  transform: translate(-50%, -50%) scale(1.12);
   background: rgba(30, 41, 59, 0.98);
 }
 
-.pod-avatar { font-size: 1.3rem; }
+.player-pod.cut-target {
+  border-color: #ef4444 !important;
+  box-shadow: 0 0 35px rgba(239, 68, 68, 1) !important;
+  animation: pulseTarget 0.3s alternate infinite;
+}
+@keyframes pulseTarget { 0% { transform: translate(-50%, -50%) scale(1.05); } 100% { transform: translate(-50%, -50%) scale(1.2); } }
+
+.pod-avatar { font-size: 1.25rem; }
 .pod-details { display: flex; flex-direction: column; text-align: left; }
-.pod-name { font-weight: 800; font-size: 0.78rem; color: #f8fafc; white-space: nowrap; max-width: 110px; overflow: hidden; text-overflow: ellipsis; }
-.pod-meta { font-size: 0.7rem; color: #94a3b8; }
+.pod-name { font-weight: 800; font-size: 0.76rem; color: #f8fafc; white-space: nowrap; max-width: 105px; overflow: hidden; text-overflow: ellipsis; }
+.pod-meta { font-size: 0.68rem; color: #94a3b8; }
 
-/* FIXED SLOTS AROUND THE TABLE */
-.seat-bottom { bottom: 6px; left: 50%; transform: translateX(-50%); }
-.seat-bottom.active-turn { transform: translateX(-50%) scale(1.08); }
-
-.seat-top-center { top: 6px; left: 50%; transform: translateX(-50%); }
-.seat-top-center.active-turn { transform: translateX(-50%) scale(1.08); }
-
-.seat-top-left { top: 12px; left: 22%; }
-.seat-top-right { top: 12px; right: 22%; }
-
-.seat-mid-left { top: 46%; left: 1%; transform: translateY(-50%); }
-.seat-mid-left.active-turn { transform: translateY(-50%) scale(1.08); }
-
-.seat-mid-right { top: 46%; right: 1%; transform: translateY(-50%); }
-.seat-mid-right.active-turn { transform: translateY(-50%) scale(1.08); }
-
-/* TRICK THROW ZONE */
+/* TRICK THROW ZONE & ANIMATIONS */
 .trick-throw-zone {
   display: flex;
-  gap: 20px;
+  gap: 16px;
   justify-content: center;
   align-items: center;
   width: 100%;
@@ -142,10 +130,9 @@ button { padding: 8px 18px; border-radius: 8px; border: none; font-weight: 700; 
 
 .thrown-card-pod {
   text-align: center;
-  animation: cardDropIn 0.35s cubic-bezier(0.2, 0.9, 0.3, 1.2) forwards;
+  animation: throwIntoCenter 0.45s cubic-bezier(0.18, 0.89, 0.32, 1.28) forwards;
 }
-
-@keyframes cardDropIn {
+@keyframes throwIntoCenter {
   0% { transform: scale(0.2) translateY(50px); opacity: 0; }
   100% { transform: scale(1) translateY(0); opacity: 1; }
 }
@@ -155,20 +142,20 @@ button { padding: 8px 18px; border-radius: 8px; border: none; font-weight: 700; 
 }
 @keyframes sweepOutRight {
   0% { transform: scale(1) translateX(0); opacity: 1; }
-  100% { transform: scale(0.2) translateX(300px) rotate(45deg); opacity: 0; }
+  100% { transform: scale(0.15) translateX(320px) rotate(45deg); opacity: 0; }
 }
 
 .thrown-card-pod.penalty-out {
-  animation: penaltyFly 0.5s ease forwards !important;
+  animation: penaltyOutToPlayer 0.6s ease forwards !important;
 }
-@keyframes penaltyFly {
-  0% { transform: scale(1); opacity: 1; }
-  100% { transform: scale(0.1) translateY(-160px); opacity: 0; }
+@keyframes penaltyOutToPlayer {
+  0% { transform: scale(1) translateY(0); opacity: 1; }
+  100% { transform: scale(0.1) translateY(-140px); opacity: 0; }
 }
 
 .thrown-player-badge { font-size: 0.72rem; color: #fde047; font-weight: bold; margin-bottom: 3px; text-shadow: 0 2px 4px rgba(0,0,0,0.9); }
 
-/* CARD DESIGN */
+/* CARD GRAPHICS */
 .card {
   width: 68px;
   height: 98px;

@@ -392,48 +392,36 @@
         isMyTurn = (cp && cp.name === myName);
         if (!wasMyTurn && isMyTurn) AudioEngine.playTurnBell();
 
-        // RENDER DYNAMIC CIRCULAR SEATS AROUND TABLE
+        // RENDER TRUE MATHEMATICAL OVAL CIRCLE SEATS
         var layer = document.getElementById("arena-players-layer");
         layer.innerHTML = "";
 
-        var me = state.players.find(p => p.name === myName) || state.players[0];
-        var others = state.players.filter(p => p.name !== myName);
+        var totalPlayers = state.players.length;
+        var myIndex = state.players.findIndex(p => p.name === myName);
+        if (myIndex === -1) myIndex = 0;
 
-        // My Seat: Always Bottom Center
-        if (me) {
-          var myPod = document.createElement("div");
-          myPod.className = "player-pod seat-bottom " + (isMyTurn ? "active-turn" : "");
-          myPod.innerHTML = "<div class='pod-avatar'>👤</div>" +
-                            "<div class='pod-details'>" +
-                              "<span class='pod-name'>" + me.name + "</span>" +
-                              "<span class='pod-meta'><strong>" + me.cardCount + "</strong> पत्ते" + (me.isSafe ? " (" + me.rankTitle + ")" : "") + "</span>" +
-                            "</div>";
-          layer.appendChild(myPod);
-        }
+        // Container is 100% width x 380px height. Center is (50%, 50%)
+        // Oval Radii: Rx = 45% of width, Ry = 145px height
+        state.players.forEach(function(p, i) {
+          // Calculate angle so you (myIndex) are ALWAYS at 90 deg (Bottom Center)
+          var relativeIdx = (i - myIndex + totalPlayers) % totalPlayers;
+          var angle = (Math.PI / 2) + (relativeIdx * (2 * Math.PI / totalPlayers));
 
-        // Circular position map for other bots/players based on count
-        var slotClasses = [];
-        if (others.length === 1) {
-          slotClasses = ["seat-top-center"];
-        } else if (others.length === 2) {
-          slotClasses = ["seat-mid-left", "seat-mid-right"];
-        } else if (others.length === 3) {
-          slotClasses = ["seat-mid-left", "seat-top-center", "seat-mid-right"];
-        } else if (others.length === 4) {
-          slotClasses = ["seat-mid-left", "seat-top-left", "seat-top-right", "seat-mid-right"];
-        } else {
-          slotClasses = ["seat-mid-left", "seat-top-left", "seat-top-center", "seat-top-right", "seat-mid-right"];
-        }
+          // Calculate Oval Positions (%)
+          var xPercent = 50 + 44 * Math.cos(angle);
+          var yPercent = 50 + 42 * Math.sin(angle);
 
-        others.forEach(function(p, i) {
-          var sClass = slotClasses[i] || "seat-top-center";
           var isCurrent = (cp && cp.name === p.name);
           var pod = document.createElement("div");
-          pod.className = "player-pod " + sClass + " " + (isCurrent ? "active-turn" : "");
-          pod.innerHTML = "<div class='pod-avatar'>" + (p.isBot ? "🤖" : "👤") + "</div>" +
-                          "<div class='pod-details'>" +
-                            "<span class='pod-name'>" + p.name + "</span>" +
-                            "<span class='pod-meta'><strong>" + p.cardCount + "</strong> पत्ते" + (p.isSafe ? " (" + p.rankTitle + ")" : "") + "</span>" +
+          pod.className = "player-pod " + (isCurrent ? "active-turn" : "");
+          pod.id = "pod-player-" + i;
+          pod.style.left = xPercent + "%";
+          pod.style.top = yPercent + "%";
+
+          pod.innerHTML = "<div class="pod-avatar">" + (p.isBot ? "🤖" : "👤") + "</div>" +
+                          "<div class="pod-details">" +
+                            "<span class="pod-name">" + p.name + "</span>" +
+                            "<span class="pod-meta"><strong>" + p.cardCount + "</strong> पत्ते" + (p.isSafe ? " (" + p.rankTitle + ")" : "") + "</span>" +
                           "</div>";
           layer.appendChild(pod);
         });
@@ -492,6 +480,17 @@
           alertBanner.style.display = "block";
           alertBanner.innerText = "💥 CUT LAGA! " + msg;
           setTimeout(function() { alertBanner.style.display = "none"; }, 2500);
+
+          // Find penalty receiver and highlight their pod
+          state.players.forEach(function(p, idx) {
+            if (msg.includes(p.name)) {
+              var targetPod = document.getElementById("pod-player-" + idx);
+              if (targetPod) {
+                targetPod.classList.add("cut-target");
+                setTimeout(function() { targetPod.classList.remove("cut-target"); }, 2400);
+              }
+            }
+          });
 
           var existingCards = document.querySelectorAll("#trick-throw-zone .thrown-card-pod");
           existingCards.forEach(c => c.classList.add("penalty-out"));

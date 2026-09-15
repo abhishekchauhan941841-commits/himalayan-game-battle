@@ -94,9 +94,7 @@ function startTurnTimer(roomId) {
   if (!currentPlayer || currentPlayer.isSafe) return;
 
   if (currentPlayer.isBot) {
-    setTimeout(() => {
-      executeBotTurn(roomId);
-    }, 900);
+    setTimeout(() => { executeBotTurn(roomId); }, 2200);
     return;
   }
 
