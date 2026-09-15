@@ -25,7 +25,7 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: Clean & Generate Fresh Android Native Project
+      - name: Setup Android Project and Fix Cordova Variables
         run: |
           npm install
           npm install @capacitor/core@^6.0.0 @capacitor/cli@^6.0.0 @capacitor/android@^6.0.0
@@ -41,17 +41,23 @@ jobs:
           fs.writeFileSync("capacitor.config.json", JSON.stringify(cfg, null, 2));
           '
           
-          # Ensure dummy Cordova folder exists if requested by legacy gradle tasks
-          mkdir -p android/capacitor-cordova-android-plugins
-          touch android/capacitor-cordova-android-plugins/cordova.variables.gradle
-          
           npx cap sync android
+
+          # CRITICAL FIX: Ensure capacitor-cordova-android-plugins and cordova.variables.gradle exist AFTER cap sync
+          mkdir -p android/capacitor-cordova-android-plugins
+          cat << 'CORD_EOF' > android/capacitor-cordova-android-plugins/cordova.variables.gradle
+          ext {
+              cdvMinSdkVersion = 22
+              cdvCompileSdkVersion = 34
+              cdvTargetSdkVersion = 34
+          }
+          CORD_EOF
 
       - name: Build APK with Gradle
         working-directory: android
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
+          ./gradlew assembleDebug --no-daemon --stacktrace
 
       - name: Upload Finished APK
         uses: actions/upload-artifact@v4
