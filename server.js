@@ -14,8 +14,8 @@ const MONGO_URI = process.env.MONGO_URI;
 
 if (MONGO_URI) {
   mongoose.connect(MONGO_URI)
-    .then(() => console.log(" Connected to MongoDB Atlas!"))
-    .catch(err => console.error(" Mongo Error:", err));
+    .then(() => console.log("Connected to MongoDB Atlas!"))
+    .catch(err => console.error("Mongo Error:", err));
 }
 
 app.use(express.static(path.join(__dirname, "public")));
@@ -91,10 +91,16 @@ function startTurnTimer(roomId) {
   io.to(roomId).emit("timerUpdate", { timeLeft: room.timeLeft, total: TURN_TIMEOUT_SEC });
 
   const currentPlayer = room.players[room.currentTurnIndex];
-  if (!currentPlayer || currentPlayer.isSafe) return;
+  if (!currentPlayer || currentPlayer.isSafe) {
+    room.currentTurnIndex = nextTurnIndex(room);
+    return;
+  }
 
   if (currentPlayer.isBot) {
-    setTimeout(() => { executeBotTurn(roomId); }, 2200);
+    clearTimeout(room.botActionTimeout);
+    room.botActionTimeout = setTimeout(() => {
+      executeBotTurn(roomId);
+    }, 2200);
     return;
   }
 
@@ -131,7 +137,7 @@ function handleTimeout(roomId) {
     cardToPlay = cp.cards[0];
   }
 
-  playTurn(roomId, cp.id, [cardToPlay], cardToPlay.value);
+  playTurn(roomId, cp.name, [cardToPlay], cardToPlay.value);
 }
 
 function executeBotTurn(roomId) {
@@ -143,24 +149,22 @@ function executeBotTurn(roomId) {
 
   if (room.gameType === "bluff") {
     if (room.lastPlay && Math.random() < 0.28) {
-      handleChallenge(roomId, bot.id);
+      handleChallenge(roomId, bot.name);
       return;
     }
     const claim = room.currentClaim || bot.cards[0].value;
     const match = bot.cards.find(c => c.value === claim);
     const card = match || bot.cards[0];
-    playTurn(roomId, bot.id, [card], claim);
+    playTurn(roomId, bot.name, [card], claim);
     return;
   }
 
   let cardToPlay;
-
   if (room.isFirstTurn) {
     const aceSpade = bot.cards.find(c => c.suit === "♠" && c.value === "A");
     cardToPlay = aceSpade || bot.cards[0];
   } else if (room.leadSuit) {
     const leadSuitCards = bot.cards.filter(c => c.suit === room.leadSuit);
-
     if (leadSuitCards.length > 0) {
       leadSuitCards.sort((a, b) => CARD_RANKS[a.value] - CARD_RANKS[b.value]);
       cardToPlay = leadSuitCards[0];
@@ -173,7 +177,7 @@ function executeBotTurn(roomId) {
     cardToPlay = sortedHand[0];
   }
 
-  playTurn(roomId, bot.id, [cardToPlay], cardToPlay.value);
+  playTurn(roomId, bot.name, [cardToPlay], cardToPlay.value);
 }
 
 function dealAndStart(roomId) {
@@ -216,7 +220,7 @@ function dealAndStart(roomId) {
   }
 
   room.players.forEach(p => {
-    if (!p.isBot) io.to(p.id).emit("yourCards", p.cards);
+    if (!p.isBot && p.id) io.to(p.id).emit("yourCards", p.cards);
   });
 
   io.to(roomId).emit("gameState", sanitizeState(room));
@@ -256,18 +260,19 @@ function nextTurnIndex(room) {
   return idx;
 }
 
-function playTurn(roomId, socketId, cards, claim) {
+function playTurn(roomId, playerIdentifier, cards, claim) {
   const room = rooms[roomId];
   if (!room || !room.gameActive) return;
 
   const player = room.players[room.currentTurnIndex];
-  if (!player || player.id !== socketId || player.isSafe) {
-    io.to(socketId).emit("turnError", "अभी आपकी चाल नहीं है!");
+  if (!player || (player.name !== playerIdentifier && player.id !== playerIdentifier) || player.isSafe) {
+    const target = room.players.find(p => p.name === playerIdentifier || p.id === playerIdentifier);
+    if (target && target.id) io.to(target.id).emit("turnError", "अभी आपकी चाल नहीं है!");
     return;
   }
 
   if (room.isResolving) {
-    io.to(socketId).emit("turnError", "पिछली चाल प्रोसेस हो रही है, 1 सेकंड रुकें!");
+    if (player.id) io.to(player.id).emit("turnError", "पिछली चाल प्रोसेस हो रही है, 1 सेकंड रुकें!");
     return;
   }
 
@@ -277,7 +282,7 @@ function playTurn(roomId, socketId, cards, claim) {
   if (room.gameType === "chudapatti") {
     if (room.isFirstTurn) {
       if (playedCard.suit !== "♠" || playedCard.value !== "A") {
-        io.to(player.id).emit("turnError", "❌ पहली चाल में ♠A (हुकुम का इक्का) चलना अनिवार्य है!");
+        if (player.id) io.to(player.id).emit("turnError", "❌ पहली चाल में ♠A (हुकुम का इक्का) चलना अनिवार्य है!");
         return;
       }
       room.isFirstTurn = false;
@@ -285,7 +290,7 @@ function playTurn(roomId, socketId, cards, claim) {
 
     const hasLeadSuit = player.cards.some(c => c.suit === room.leadSuit);
     if (room.leadSuit && playedCard.suit !== room.leadSuit && hasLeadSuit) {
-      io.to(player.id).emit("turnError", `❌ आपके पास ${room.leadSuit} मौजूद है, आपको वही चलना होगा!`);
+      if (player.id) io.to(player.id).emit("turnError", `❌ आपके पास ${room.leadSuit} मौजूद है, आपको वही चलना होगा!`);
       return;
     }
 
@@ -293,7 +298,7 @@ function playTurn(roomId, socketId, cards, claim) {
 
     const cardIdx = player.cards.findIndex(c => c.suit === playedCard.suit && c.value === playedCard.value);
     if (cardIdx !== -1) player.cards.splice(cardIdx, 1);
-    if (!player.isBot) io.to(player.id).emit("yourCards", player.cards);
+    if (!player.isBot && player.id) io.to(player.id).emit("yourCards", player.cards);
 
     if (!room.leadSuit) {
       room.leadSuit = playedCard.suit;
@@ -309,7 +314,6 @@ function playTurn(roomId, socketId, cards, claim) {
     const gameEnded = checkPlayerVictory(roomId, player);
     if (gameEnded) return;
 
-    // CUT / DAAND CONDITION
     if (playedCard.suit !== room.leadSuit) {
       room.isResolving = true;
       io.to(roomId).emit("gameMessage", `💥 ${player.name} ने कट मारा (${playedCard.value}${playedCard.suit})!`);
@@ -336,13 +340,13 @@ function playTurn(roomId, socketId, cards, claim) {
         room.pile = [];
 
         io.to(roomId).emit("gameMessage", `🚨 ${penaltyPlayer.name} का ${room.leadSuit} सबसे बड़ा था, सारे पत्ते उनको उठाने पड़े!`);
-        if (!penaltyPlayer.isBot) io.to(penaltyPlayer.id).emit("yourCards", penaltyPlayer.cards);
+        if (!penaltyPlayer.isBot && penaltyPlayer.id) io.to(penaltyPlayer.id).emit("yourCards", penaltyPlayer.cards);
 
         room.currentTrick = [];
         room.leadSuit = null;
         room.isResolving = false;
 
-        room.currentTurnIndex = room.players.findIndex(p => p.id === player.id);
+        room.currentTurnIndex = room.players.findIndex(p => p.name === player.name);
         if (room.players[room.currentTurnIndex].isSafe) {
           room.currentTurnIndex = nextTurnIndex(room);
         }
@@ -353,7 +357,6 @@ function playTurn(roomId, socketId, cards, claim) {
       return;
     }
 
-    // ROUND COMPLETE
     const activePlayers = getActivePlayers(room);
     if (room.currentTrick.length >= activePlayers.length) {
       room.isResolving = true;
@@ -397,11 +400,10 @@ function playTurn(roomId, socketId, cards, claim) {
     return;
   }
 
-  // Bluff logic
   clearRoomTimer(room);
 
   player.cards = player.cards.filter(c => !cards.some(rc => rc.suit === c.suit && rc.value === c.value));
-  if (!player.isBot) io.to(player.id).emit("yourCards", player.cards);
+  if (!player.isBot && player.id) io.to(player.id).emit("yourCards", player.cards);
 
   room.pile.push(...cards);
   room.currentClaim = claim;
@@ -415,21 +417,21 @@ function playTurn(roomId, socketId, cards, claim) {
   startTurnTimer(roomId);
 }
 
-function handleChallenge(roomId, challengerId) {
+function handleChallenge(roomId, playerIdentifier) {
   const room = rooms[roomId];
   if (!room || !room.gameActive || !room.lastPlay || room.isResolving) return;
 
   clearRoomTimer(room);
 
-  const challenger = room.players.find(p => p.id === challengerId);
-  const accused = room.players.find(p => p.id === room.lastPlay.playerId);
+  const challenger = room.players.find(p => p.name === playerIdentifier || p.id === playerIdentifier);
+  const accused = room.players.find(p => p.name === room.lastPlay.player || p.id === room.lastPlay.playerId);
   if (!challenger || !accused) return;
 
   const isBluff = room.lastPlay.cards.some(c => c.value !== room.lastPlay.claim);
   let penaltyReceiver = isBluff ? accused : challenger;
   penaltyReceiver.cards.push(...room.pile);
 
-  if (!penaltyReceiver.isBot) io.to(penaltyReceiver.id).emit("yourCards", penaltyReceiver.cards);
+  if (!penaltyReceiver.isBot && penaltyReceiver.id) io.to(penaltyReceiver.id).emit("yourCards", penaltyReceiver.cards);
 
   io.to(roomId).emit("gameMessage", `🔥 ${challenger.name} ने BLUFF पकड़ा! ${isBluff ? accused.name + " झूठ बोल रहा था!" : challenger.name + " का शक गलत था!"}`);
 
@@ -437,7 +439,7 @@ function handleChallenge(roomId, challengerId) {
   room.lastPlay = null;
   room.currentClaim = null;
 
-  room.currentTurnIndex = room.players.findIndex(p => p.id === penaltyReceiver.id);
+  room.currentTurnIndex = room.players.findIndex(p => p.name === penaltyReceiver.name);
   if (room.players[room.currentTurnIndex].isSafe) {
     room.currentTurnIndex = nextTurnIndex(room);
   }
@@ -450,6 +452,7 @@ function endGame(roomId) {
   const room = rooms[roomId];
   if (!room) return;
   clearRoomTimer(room);
+  clearTimeout(room.botActionTimeout);
   room.gameActive = false;
   room.isResolving = false;
   io.to(roomId).emit("gameOver", {
@@ -479,6 +482,7 @@ io.on("connection", (socket) => {
         gameActive: false,
         isResolving: false,
         timer: null,
+        botActionTimeout: null,
         timeLeft: TURN_TIMEOUT_SEC,
         winners: [],
         loser: null
@@ -499,7 +503,13 @@ io.on("connection", (socket) => {
       }
     } else {
       const room = rooms[roomId];
-      if (!room.players.some(p => p.id === socket.id)) {
+      const existing = room.players.find(p => p.name === (username || "Player 1"));
+      if (existing) {
+        existing.id = socket.id;
+        if (existing.cards.length > 0) {
+          socket.emit("yourCards", existing.cards);
+        }
+      } else {
         room.players.push({ id: socket.id, name: username || "Player", cards: [], isBot: false });
       }
     }
@@ -509,6 +519,12 @@ io.on("connection", (socket) => {
 
     if (mode === "bot" && !room.gameActive) {
       setTimeout(() => { dealAndStart(roomId); }, 500);
+    } else if (room.gameActive && !room.isResolving) {
+      const cp = room.players[room.currentTurnIndex];
+      if (cp && cp.isBot) {
+        clearTimeout(room.botActionTimeout);
+        room.botActionTimeout = setTimeout(() => { executeBotTurn(roomId); }, 1500);
+      }
     }
   });
 
@@ -517,22 +533,32 @@ io.on("connection", (socket) => {
   });
 
   socket.on("playCards", ({ roomId, cards, claim }) => {
-    playTurn(roomId, socket.id, cards, claim);
+    const room = rooms[roomId];
+    if (!room) return;
+    const player = room.players.find(p => p.id === socket.id);
+    const pName = player ? player.name : socket.id;
+    playTurn(roomId, pName, cards, claim);
   });
 
   socket.on("challenge", ({ roomId }) => {
-    handleChallenge(roomId, socket.id);
+    const room = rooms[roomId];
+    if (!room) return;
+    const player = room.players.find(p => p.id === socket.id);
+    const pName = player ? player.name : socket.id;
+    handleChallenge(roomId, pName);
   });
 
   socket.on("disconnect", () => {
     for (let rId in rooms) {
       const room = rooms[rId];
-      room.players = room.players.filter(p => p.id !== socket.id);
-      if (room.players.length === 0 || (room.isBotGame && room.players.every(p => p.isBot))) {
+      const player = room.players.find(p => p.id === socket.id);
+      if (player && !room.gameActive) {
+        room.players = room.players.filter(p => p.id !== socket.id);
+      }
+      if (room.players.length === 0 || (room.isBotGame && room.players.every(p => p.isBot && !room.gameActive))) {
         clearRoomTimer(room);
+        clearTimeout(room.botActionTimeout);
         delete rooms[rId];
-      } else {
-        io.to(rId).emit("gameState", sanitizeState(room));
       }
     }
   });
