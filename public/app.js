@@ -1,3 +1,10 @@
+
+function switchLanguage(lang) {
+  I18N.setLang(lang);
+  document.getElementById("lang-en").classList.toggle("active", lang === "en");
+  document.getElementById("lang-hi").classList.toggle("active", lang === "hi");
+}
+
 const AudioEngine = {
   ctx: null,
   init: function() {
@@ -181,7 +188,7 @@ function createFaceDownCard() {
 
 function sendCardPlay(cardList) {
   if (!cardList || cardList.length === 0) {
-    showToast("पहले एक पत्ता चुनें!");
+    showToast(I18N.t("selectCardFirst"));
     return;
   }
   var claimVal = (selectedGame === "chudapatti") ? cardList[0].value : document.getElementById("claim-select").value;
@@ -194,6 +201,7 @@ function sendCardPlay(cardList) {
 }
 
 window.addEventListener("DOMContentLoaded", function() {
+  switchLanguage(I18N.currentLang);
   document.getElementById("card-chudapatti").onclick = function() { selectGame("chudapatti"); };
   document.getElementById("btn-chuda-action").onclick = function(e) { e.stopPropagation(); selectGame("chudapatti"); };
 
@@ -388,9 +396,9 @@ if (socket) {
   });
 
   socket.on("gameOver", function(data) {
-    var res = "🏆 मैच समाप्त!\n\n";
-    if (data.winners && data.winners.length > 0) res += "🥇 1st Winner: " + data.winners[0] + "\n";
-    if (data.loser) res += "❌ " + (data.gameType === "chudapatti" ? "चुड़ा: " : "Loser: ") + data.loser + "\n";
+    var res = I18N.t("matchOver") + "\n\n";
+    if (data.winners && data.winners.length > 0) res += I18N.t("winner1st") + " " + data.winners[0] + "\n";
+    if (data.loser) res += (data.gameType === "chudapatti" ? "❌ चुड़ा: " : "❌ Loser: ") + data.loser + "\n";
     alert(res);
   });
 }
@@ -414,7 +422,7 @@ function renderHand() {
           selectedCards = [card];
           document.querySelectorAll("#cards-hand .card").forEach(function(c) { c.classList.remove("selected"); });
           el.classList.add("selected");
-          showToast("अभी आपकी चाल नहीं है! अपनी बारी का इंतज़ार करें।");
+          showToast(I18N.t("notYourTurn"));
         }
       } else {
         // Bluff: Multi-card selection (up to 4 cards)
@@ -424,7 +432,7 @@ function renderHand() {
           el.classList.remove("selected");
         } else {
           if (selectedCards.length >= 4) {
-            showToast("एक बारी में अधिकतम 4 पत्ते ही फेंक सकते हैं!");
+            showToast(I18N.t("maxBluffCards"));
             return;
           }
           selectedCards.push(card);

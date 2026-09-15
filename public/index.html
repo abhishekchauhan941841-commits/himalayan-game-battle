@@ -4,8 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Himalayan Game Battle Arena</title>
-  <link rel="stylesheet" href="style.css?v=2.2">
+  <link rel="stylesheet" href="style.css?v=2.3">
   <style>
+    .header-top-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+    .lang-switcher { display: flex; gap: 4px; background: #152238; border: 1px solid #334155; padding: 2px 4px; border-radius: 8px; }
+    .btn-lang { background: transparent; color: #94a3b8; border: none; padding: 3px 8px; font-size: 0.76rem; font-weight: bold; border-radius: 4px; cursor: pointer; }
+    .btn-lang.active { background: #0284c7; color: #fff; }
     .bot-selector-wrapper { margin-top: 10px; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: bold; font-size: 0.85rem; }
     .bot-select-dropdown { padding: 4px 10px; border-radius: 6px; background: #090d16; border: 1px solid #38bdf8; color: #fff; font-weight: bold; }
     .toast-error { display: none; position: fixed; top: 16px; left: 50%; transform: translateX(-50%); background: #dc2626; color: white; padding: 10px 22px; border-radius: 30px; font-weight: 800; font-size: 0.9rem; box-shadow: 0 10px 30px rgba(220, 38, 38, 0.7); z-index: 9999; border: 2px solid #fecaca; }
@@ -15,51 +19,56 @@
   <div id="toast-msg" class="toast-error">Error</div>
 
   <div class="hub-container">
-    <header class="main-header">
+    <div class="header-top-row">
+      <div style="width: 70px;"></div>
       <div class="logo-badge">🏔️ HIMALAYAN BATTLE HUB</div>
-      <p class="subtitle">Traditional Strategic Arena with Circular Seating & Live Audio FX</p>
-    </header>
+      <div class="lang-switcher">
+        <button type="button" class="btn-lang active" id="lang-en" onclick="switchLanguage('en')">EN</button>
+        <button type="button" class="btn-lang" id="lang-hi" onclick="switchLanguage('hi')">हिन्दी</button>
+      </div>
+    </div>
+    <p class="subtitle" style="text-align: center; margin-bottom: 8px;" data-i18n="hubSubtitle">Traditional Strategic Arena with Circular Seating & Live Audio FX</p>
 
     <div class="player-bar">
-      <label>Your Name:</label>
+      <label data-i18n="playerNameLabel">Your Name:</label>
       <input type="text" id="global-player-name" value="Player 1" maxlength="15" />
     </div>
 
     <!-- VIEW 1: GAME SELECT -->
     <div id="view-game-select" class="screen-view active">
-      <h2 class="section-title">Select Card Game</h2>
+      <h2 class="section-title" data-i18n="selectGameTitle">Select Card Game</h2>
       <div class="game-cards-grid">
         <div class="game-card" id="card-chudapatti">
-          <div class="card-tag">AUTHENTIC PAHADI</div>
+          <div class="card-tag" data-i18n="chudaTag">AUTHENTIC PAHADI</div>
           <div class="card-icon">🃏</div>
-          <h3>Chudapatti</h3>
-          <p>♠A से शुरुआत, सेम सूट फॉलो, कट/डांड नियम। पहला खाली विजेता, अंतिम 'चुड़ा'!</p>
-          <button type="button" class="btn-primary" id="btn-chuda-action">Play Chudapatti</button>
+          <h3 data-i18n="chudaTitle">Chudapatti</h3>
+          <p data-i18n="chudaDesc">Start with ♠A, follow suit, cut penalty rules. Empty hand first to win, last player becomes चुड़ा!</p>
+          <button type="button" class="btn-primary" id="btn-chuda-action" data-i18n="btnPlayChuda">Play Chudapatti</button>
         </div>
 
         <div class="game-card" id="card-bluff">
-          <div class="card-tag badge-bluff">DECEPTION</div>
+          <div class="card-tag badge-bluff" data-i18n="bluffTag">DECEPTION</div>
           <div class="card-icon">🎭</div>
-          <h3>Bluff</h3>
-          <p>Declare false claims, challenge opponents, and catch liars before your hand empties.</p>
-          <button type="button" class="btn-accent" id="btn-bluff-action">Play Bluff</button>
+          <h3 data-i18n="bluffTitle">Bluff</h3>
+          <p data-i18n="bluffDesc">Declare false claims, challenge opponents, and catch liars before your hand empties.</p>
+          <button type="button" class="btn-accent" id="btn-bluff-action" data-i18n="btnPlayBluff">Play Bluff</button>
         </div>
       </div>
     </div>
 
     <!-- VIEW 2: MODE SELECT -->
     <div id="view-mode-select" class="screen-view">
-      <button type="button" class="btn-back" id="btn-back-to-games">← Change Game</button>
-      <h2 class="section-title" id="mode-header-title">Game Modes</h2>
+      <button type="button" class="btn-back" id="btn-back-to-games" data-i18n="btnChangeGame">← Change Game</button>
+      <h2 class="section-title" id="mode-header-title" data-i18n="gameModesTitle">Game Modes</h2>
 
       <div class="mode-cards-grid">
         <div class="mode-card">
           <div class="mode-icon">🤖</div>
-          <h3>Play vs Smart AI</h3>
-          <p>Instant circular table match with customizable bot count.</p>
+          <h3 data-i18n="vsAiTitle">Play vs Smart AI</h3>
+          <p data-i18n="vsAiDesc">Instant circular table match with customizable bot count.</p>
           
           <div class="bot-selector-wrapper">
-            <label>Bots (1 - 5):</label>
+            <label data-i18n="botsLabel">Bots (1 - 5):</label>
             <select id="bot-count-select" class="bot-select-dropdown">
               <option value="1">1 Bot (Heads-Up)</option>
               <option value="2">2 Bots (3 Players)</option>
@@ -69,36 +78,36 @@
             </select>
           </div>
           <br>
-          <button type="button" class="btn-primary" id="btn-bot-action">Start Match</button>
+          <button type="button" class="btn-primary" id="btn-bot-action" data-i18n="btnStartMatch">Start Match</button>
         </div>
 
         <div class="mode-card" id="card-mode-multi">
           <div class="mode-icon">👥</div>
-          <h3>Online Multiplayer</h3>
-          <p>Host a private room with 6-letter room code or join friends online.</p>
-          <button type="button" class="btn-accent" id="btn-multi-action">Multiplayer Lobby</button>
+          <h3 data-i18n="onlineMultiTitle">Online Multiplayer</h3>
+          <p data-i18n="onlineMultiDesc">Host a private room with 6-letter room code or join friends online.</p>
+          <button type="button" class="btn-accent" id="btn-multi-action" data-i18n="btnMultiLobby">Multiplayer Lobby</button>
         </div>
       </div>
     </div>
 
     <!-- VIEW 3: MULTIPLAYER LOBBY -->
     <div id="view-multi-lobby" class="screen-view">
-      <button type="button" class="btn-back" id="btn-back-to-modes">← Back to Modes</button>
-      <h2 class="section-title">Multiplayer Rooms</h2>
+      <button type="button" class="btn-back" id="btn-back-to-modes" data-i18n="btnBackModes">← Back to Modes</button>
+      <h2 class="section-title" data-i18n="multiRoomsTitle">Multiplayer Rooms</h2>
 
       <div class="lobby-actions-grid">
         <div class="action-card" id="card-create-room">
-          <h3>Host Private Table</h3>
-          <p>Generate a unique room code to invite players.</p>
-          <button type="button" class="btn-primary" id="btn-create-room-act">➕ Host New Table</button>
+          <h3 data-i18n="hostTableTitle">Host Private Table</h3>
+          <p data-i18n="hostTableDesc">Generate a unique room code to invite players.</p>
+          <button type="button" class="btn-primary" id="btn-create-room-act" data-i18n="btnHostTable">➕ Host New Table</button>
         </div>
 
         <div class="action-card" id="card-join-room">
-          <h3>Join Table</h3>
-          <p>Enter 6-character room code from your friend.</p>
+          <h3 data-i18n="joinTableTitle">Join Table</h3>
+          <p data-i18n="joinTableDesc">Enter 6-character room code from your friend.</p>
           <div class="join-input-group">
             <input type="text" id="input-room-code" placeholder="e.g. HMB789" />
-            <button type="button" class="btn-accent" id="btn-join-room-act">Join</button>
+            <button type="button" class="btn-accent" id="btn-join-room-act" data-i18n="btnJoin">Join</button>
           </div>
         </div>
       </div>
@@ -109,12 +118,12 @@
       <div class="arena-top-bar">
         <div class="room-pill">Table: <span id="display-room-code">-</span></div>
         <div class="mode-pill" id="display-game-tag">Chudapatti</div>
-        <button type="button" id="btn-host-start" class="btn-success" style="display:none;">Start Match</button>
+        <button type="button" id="btn-host-start" class="btn-success" style="display:none;" data-i18n="btnStartMatch">Start Match</button>
       </div>
 
       <div id="timer-container">
         <div class="timer-meta">
-          <span>⏱️ Turn Timer</span>
+          <span data-i18n="turnTimerLabel">⏱️ Turn Timer</span>
           <span id="timer-text">30s</span>
         </div>
         <div class="timer-track">
@@ -127,9 +136,9 @@
 
         <div class="green-poker-table">
           <div class="table-glass-bar">
-            <div id="suit-indicator">सूट: <span id="lead-suit-display" style="color:#fff;">कोई नहीं</span></div>
-            <div id="claim-indicator" style="display:none;">Claim: <span id="current-claim" style="color:#fff;">None</span></div>
-            <div>Turn: <span id="current-turn" style="color:#fff;">-</span></div>
+            <div id="suit-indicator"><span data-i18n="suitLabel">Suit:</span> <span id="lead-suit-display" style="color:#fff;" data-i18n="noneText">None</span></div>
+            <div id="claim-indicator" style="display:none;">Claim: <span id="current-claim" style="color:#fff;" data-i18n="noneText">None</span></div>
+            <div><span data-i18n="turnLabel">Turn:</span> <span id="current-turn" style="color:#fff;">-</span></div>
           </div>
 
           <div class="trick-throw-zone" id="trick-throw-zone"></div>
@@ -137,11 +146,11 @@
         </div>
       </div>
 
-      <div id="action-announcement">Waiting for match to begin...</div>
+      <div id="action-announcement" data-i18n="waitingMatch">Waiting for match to begin...</div>
 
       <div class="action-controls">
         <div id="bluff-claim-wrapper" style="display:none;">
-          <label>Claim Value:</label>
+          <label data-i18n="claimValueLabel">Claim Value:</label>
           <select id="claim-select">
             <option value="2">2</option><option value="3">3</option><option value="4">4</option>
             <option value="5">5</option><option value="6">6</option><option value="7">7</option>
@@ -151,14 +160,14 @@
           </select>
         </div>
 
-        <button type="button" id="btn-play-cards" class="btn-primary">🎴 पत्ता फेंकें (Play Selected)</button>
-        <button type="button" id="btn-challenge" class="btn-danger" style="display:none;">🔥 CHALLENGE / BLUFF!</button>
+        <button type="button" id="btn-play-cards" class="btn-primary" data-i18n="btnPlayCard">🎴 Play Selected Card</button>
+        <button type="button" id="btn-challenge" class="btn-danger" style="display:none;" data-i18n="btnChallenge">🔥 CHALLENGE / BLUFF!</button>
       </div>
 
       <div class="hand-section">
         <h3>
-          <span>आपके पत्ते (<span id="hand-count">0</span>)</span>
-          <span style="color:#38bdf8; font-weight:bold; font-size:0.8rem;">💡 Tip: अपनी बारी आने पर पत्ते पर क्लिक करें!</span>
+          <span><span data-i18n="yourCardsTitle">Your Cards</span> (<span id="hand-count">0</span>)</span>
+          <span id="hand-tip-text" style="color:#38bdf8; font-weight:bold; font-size:0.8rem;">💡 Tip: Click on a card during your turn to play it!</span>
         </h3>
         <div id="cards-hand" class="cards-container"></div>
       </div>
@@ -166,6 +175,7 @@
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
-  <script src="app.js?v=2.2"></script>
+  <script src="translations.js?v=2.3"></script>
+  <script src="app.js?v=2.3"></script>
 </body>
 </html>
