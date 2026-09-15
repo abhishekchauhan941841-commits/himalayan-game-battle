@@ -20,7 +20,7 @@
     </div>
 
     <!-- VIEW 1: GAME SELECT -->
-    <div id="view-game-select" class="screen-view active">
+    <div id="view-game-select" style="display: block;">
       <h2 class="section-title">Select Card Game</h2>
       <div class="game-cards-grid">
         <div class="game-card" onclick="chooseGame('chudapatti')">
@@ -28,7 +28,7 @@
           <div class="card-icon">🃏</div>
           <h3>Chudapatti</h3>
           <p>Discard matching cards, finish hand first. No bluffs, pure card shedding.</p>
-          <button type="button" class="btn-primary" onclick="chooseGame('chudapatti'); event.stopPropagation();">Play Chudapatti</button>
+          <button type="button" class="btn-primary">Play Chudapatti</button>
         </div>
 
         <div class="game-card" onclick="chooseGame('bluff')">
@@ -36,13 +36,13 @@
           <div class="card-icon">🎭</div>
           <h3>Bluff</h3>
           <p>Declare claims, challenge opponents, and catch liars before your hand empties.</p>
-          <button type="button" class="btn-accent" onclick="chooseGame('bluff'); event.stopPropagation();">Play Bluff</button>
+          <button type="button" class="btn-accent">Play Bluff</button>
         </div>
       </div>
     </div>
 
     <!-- VIEW 2: MODE SELECT -->
-    <div id="view-mode-select" class="screen-view">
+    <div id="view-mode-select" style="display: none;">
       <button type="button" class="btn-back" onclick="switchView('view-game-select')">← Change Game</button>
       <h2 class="section-title" id="mode-header-title">Game Modes</h2>
 
@@ -51,34 +51,34 @@
           <div class="mode-icon">🤖</div>
           <h3>Play vs AI Bot</h3>
           <p>Instant start! Quick 30-sec match against intelligent Himalayan Bot.</p>
-          <button type="button" class="btn-primary" onclick="startInstantBot(); event.stopPropagation();">Start Instant Match</button>
+          <button type="button" class="btn-primary">Start Instant Match</button>
         </div>
 
         <div class="mode-card" onclick="switchView('view-multi-lobby')">
           <div class="mode-icon">👥</div>
           <h3>Online Multiplayer</h3>
           <p>Create a 6-letter room code or join friends online.</p>
-          <button type="button" class="btn-accent" onclick="switchView('view-multi-lobby'); event.stopPropagation();">Multiplayer Lobby</button>
+          <button type="button" class="btn-accent">Multiplayer Lobby</button>
         </div>
       </div>
     </div>
 
     <!-- VIEW 3: MULTIPLAYER LOBBY -->
-    <div id="view-multi-lobby" class="screen-view">
+    <div id="view-multi-lobby" style="display: none;">
       <button type="button" class="btn-back" onclick="switchView('view-mode-select')">← Back to Modes</button>
       <h2 class="section-title">Multiplayer Rooms</h2>
 
       <div class="lobby-actions-grid">
-        <div class="action-card">
+        <div class="action-card" onclick="createRoom()">
           <h3>Create Private Room</h3>
           <p>Generate a unique room code and share it with friends.</p>
-          <button type="button" class="btn-primary" onclick="createRoom()">➕ Host New Room</button>
+          <button type="button" class="btn-primary">➕ Host New Room</button>
         </div>
 
         <div class="action-card">
           <h3>Join Existing Room</h3>
           <p>Enter the 6-character code from your friend.</p>
-          <div class="join-input-group">
+          <div class="join-input-group" onclick="event.stopPropagation();">
             <input type="text" id="input-room-code" placeholder="e.g. HMB789" />
             <button type="button" class="btn-accent" onclick="joinRoom()">Join Room</button>
           </div>
@@ -87,7 +87,7 @@
     </div>
 
     <!-- VIEW 4: ARENA -->
-    <div id="view-arena" class="screen-view">
+    <div id="view-arena" style="display: none;">
       <div class="arena-top-bar">
         <div class="room-pill">Room: <span id="display-room-code">-</span></div>
         <div class="mode-pill" id="display-game-tag">Game</div>
@@ -144,7 +144,7 @@
 
   <script>
     var socket = null;
-    try { socket = io(); } catch(e) { console.error("Socket error:", e); }
+    try { socket = io(); } catch(e) { console.log("Socket init warning:", e); }
 
     var currentRoom = null;
     var selectedGame = "chudapatti";
@@ -152,16 +152,13 @@
     var selectedCards = [];
 
     function switchView(viewId) {
-      var views = document.querySelectorAll(".screen-view");
-      for (var i = 0; i < views.length; i++) {
-        views[i].classList.remove("active");
-        views[i].style.display = "none";
+      var allViews = ["view-game-select", "view-mode-select", "view-multi-lobby", "view-arena"];
+      for (var i = 0; i < allViews.length; i++) {
+        var el = document.getElementById(allViews[i]);
+        if (el) el.style.display = "none";
       }
       var target = document.getElementById(viewId);
-      if (target) {
-        target.classList.add("active");
-        target.style.display = "block";
-      }
+      if (target) target.style.display = "block";
     }
 
     function getName() {
@@ -171,7 +168,8 @@
 
     function chooseGame(game) {
       selectedGame = game;
-      document.getElementById("mode-header-title").innerText = (game === "chudapatti" ? "Chudapatti" : "Bluff") + " Game Modes";
+      var titleEl = document.getElementById("mode-header-title");
+      if (titleEl) titleEl.innerText = (game === "chudapatti" ? "Chudapatti" : "Bluff") + " Game Modes";
       switchView("view-mode-select");
     }
 
@@ -190,7 +188,8 @@
     }
 
     function joinRoom() {
-      var code = document.getElementById("input-room-code").value.trim().toUpperCase();
+      var inp = document.getElementById("input-room-code");
+      var code = inp ? inp.value.trim().toUpperCase() : "";
       if (!code) return alert("Please enter room code!");
       currentRoom = code;
       setupArena(code, "Multiplayer (" + selectedGame.toUpperCase() + ")", false);
@@ -241,12 +240,14 @@
         document.getElementById("current-turn").innerText = cp ? cp.name : "-";
 
         var pl = document.getElementById("players-list");
-        pl.innerHTML = "";
-        state.players.forEach(function(p) {
-          var li = document.createElement("li");
-          li.innerText = p.name + " (" + p.cardCount + " cards)";
-          pl.appendChild(li);
-        });
+        if (pl) {
+          pl.innerHTML = "";
+          state.players.forEach(function(p) {
+            var li = document.createElement("li");
+            li.innerText = p.name + " (" + p.cardCount + " cards)";
+            pl.appendChild(li);
+          });
+        }
 
         if (state.lastPlay) {
           document.getElementById("action-announcement").innerText = 
