@@ -5,7 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Himalayan Game Battle Arena</title>
   <link rel="stylesheet" href="style.css">
-  <script src="/socket.io/socket.io.js"></script>
+  <style>
+    /* Absolute Fail-safe CSS Display Rules */
+    .screen-view { display: none; }
+    .screen-view.active { display: block !important; }
+    .game-card, .mode-card, .action-card, button { cursor: pointer !important; }
+  </style>
 </head>
 <body>
   <div class="hub-container">
@@ -20,78 +25,78 @@
     </div>
 
     <!-- VIEW 1: GAME SELECT -->
-    <div id="view-game-select" style="display: block;">
+    <div id="view-game-select" class="screen-view active">
       <h2 class="section-title">Select Card Game</h2>
       <div class="game-cards-grid">
-        <div class="game-card" onclick="chooseGame('chudapatti')">
+        <div class="game-card" id="card-chudapatti">
           <div class="card-tag">MATCH & SHED</div>
           <div class="card-icon">🃏</div>
           <h3>Chudapatti</h3>
           <p>Discard matching cards, finish hand first. No bluffs, pure card shedding.</p>
-          <button type="button" class="btn-primary">Play Chudapatti</button>
+          <button type="button" class="btn-primary" id="btn-chuda-action">Play Chudapatti</button>
         </div>
 
-        <div class="game-card" onclick="chooseGame('bluff')">
+        <div class="game-card" id="card-bluff">
           <div class="card-tag badge-bluff">DECEPTION</div>
           <div class="card-icon">🎭</div>
           <h3>Bluff</h3>
           <p>Declare claims, challenge opponents, and catch liars before your hand empties.</p>
-          <button type="button" class="btn-accent">Play Bluff</button>
+          <button type="button" class="btn-accent" id="btn-bluff-action">Play Bluff</button>
         </div>
       </div>
     </div>
 
     <!-- VIEW 2: MODE SELECT -->
-    <div id="view-mode-select" style="display: none;">
-      <button type="button" class="btn-back" onclick="switchView('view-game-select')">← Change Game</button>
+    <div id="view-mode-select" class="screen-view">
+      <button type="button" class="btn-back" id="btn-back-to-games">← Change Game</button>
       <h2 class="section-title" id="mode-header-title">Game Modes</h2>
 
       <div class="mode-cards-grid">
-        <div class="mode-card" onclick="startInstantBot()">
+        <div class="mode-card" id="card-mode-bot">
           <div class="mode-icon">🤖</div>
           <h3>Play vs AI Bot</h3>
-          <p>Instant start! Quick 30-sec match against intelligent Himalayan Bot.</p>
-          <button type="button" class="btn-primary">Start Instant Match</button>
+          <p>Instant match against intelligent Himalayan Bot with 30-sec timer.</p>
+          <button type="button" class="btn-primary" id="btn-bot-action">Start Instant Match</button>
         </div>
 
-        <div class="mode-card" onclick="switchView('view-multi-lobby')">
+        <div class="mode-card" id="card-mode-multi">
           <div class="mode-icon">👥</div>
           <h3>Online Multiplayer</h3>
-          <p>Create a 6-letter room code or join friends online.</p>
-          <button type="button" class="btn-accent">Multiplayer Lobby</button>
+          <p>Create a 6-letter room code or join friends online in real-time.</p>
+          <button type="button" class="btn-accent" id="btn-multi-action">Multiplayer Lobby</button>
         </div>
       </div>
     </div>
 
     <!-- VIEW 3: MULTIPLAYER LOBBY -->
-    <div id="view-multi-lobby" style="display: none;">
-      <button type="button" class="btn-back" onclick="switchView('view-mode-select')">← Back to Modes</button>
+    <div id="view-multi-lobby" class="screen-view">
+      <button type="button" class="btn-back" id="btn-back-to-modes">← Back to Modes</button>
       <h2 class="section-title">Multiplayer Rooms</h2>
 
       <div class="lobby-actions-grid">
-        <div class="action-card" onclick="createRoom()">
+        <div class="action-card" id="card-create-room">
           <h3>Create Private Room</h3>
           <p>Generate a unique room code and share it with friends.</p>
-          <button type="button" class="btn-primary">➕ Host New Room</button>
+          <button type="button" class="btn-primary" id="btn-create-room-act">➕ Host New Room</button>
         </div>
 
-        <div class="action-card">
+        <div class="action-card" id="card-join-room">
           <h3>Join Existing Room</h3>
           <p>Enter the 6-character code from your friend.</p>
-          <div class="join-input-group" onclick="event.stopPropagation();">
+          <div class="join-input-group">
             <input type="text" id="input-room-code" placeholder="e.g. HMB789" />
-            <button type="button" class="btn-accent" onclick="joinRoom()">Join Room</button>
+            <button type="button" class="btn-accent" id="btn-join-room-act">Join Room</button>
           </div>
         </div>
       </div>
     </div>
 
     <!-- VIEW 4: ARENA -->
-    <div id="view-arena" style="display: none;">
+    <div id="view-arena" class="screen-view">
       <div class="arena-top-bar">
         <div class="room-pill">Room: <span id="display-room-code">-</span></div>
         <div class="mode-pill" id="display-game-tag">Game</div>
-        <button type="button" id="btn-host-start" class="btn-success" style="display:none;" onclick="hostStart()">Start Match</button>
+        <button type="button" id="btn-host-start" class="btn-success" style="display:none;">Start Match</button>
       </div>
 
       <div id="timer-container">
@@ -125,8 +130,8 @@
             </select>
           </div>
 
-          <button type="button" id="btn-play-cards" class="btn-primary" onclick="playSelected()">Play / Discard Selected</button>
-          <button type="button" id="btn-challenge" class="btn-danger" style="display:none;" onclick="challengeBluff()">🔥 CHALLENGE / BLUFF!</button>
+          <button type="button" id="btn-play-cards" class="btn-primary">Play / Discard Selected</button>
+          <button type="button" id="btn-challenge" class="btn-danger" style="display:none;">🔥 CHALLENGE / BLUFF!</button>
         </div>
       </div>
 
@@ -142,63 +147,74 @@
     </div>
   </div>
 
-  <script>
-    var socket = null;
-    try { socket = io(); } catch(e) { console.log("Socket init warning:", e); }
+  <!-- Safe Async Socket Loader -->
+  <script src="/socket.io/socket.io.js"></script>
 
-    var currentRoom = null;
-    var selectedGame = "chudapatti";
-    var myCards = [];
-    var selectedCards = [];
+  <script>
+    // State variables
+    let socket = null;
+    let currentRoom = null;
+    let selectedGame = "chudapatti";
+    let myCards = [];
+    let selectedCards = [];
 
     function switchView(viewId) {
-      var allViews = ["view-game-select", "view-mode-select", "view-multi-lobby", "view-arena"];
-      for (var i = 0; i < allViews.length; i++) {
-        var el = document.getElementById(allViews[i]);
-        if (el) el.style.display = "none";
-      }
-      var target = document.getElementById(viewId);
-      if (target) target.style.display = "block";
+      document.querySelectorAll(".screen-view").forEach(el => {
+        el.classList.remove("active");
+      });
+      const target = document.getElementById(viewId);
+      if (target) target.classList.add("active");
     }
 
     function getName() {
-      var inp = document.getElementById("global-player-name");
+      const inp = document.getElementById("global-player-name");
       return (inp && inp.value.trim()) ? inp.value.trim() : "Player 1";
     }
 
-    function chooseGame(game) {
+    function selectGameMode(game) {
       selectedGame = game;
-      var titleEl = document.getElementById("mode-header-title");
-      if (titleEl) titleEl.innerText = (game === "chudapatti" ? "Chudapatti" : "Bluff") + " Game Modes";
+      document.getElementById("mode-header-title").innerText = (game === "chudapatti" ? "Chudapatti" : "Bluff") + " Game Modes";
       switchView("view-mode-select");
     }
 
+    function ensureSocket() {
+      if (!socket && typeof io !== "undefined") {
+        socket = io();
+        bindSocketEvents();
+      }
+      return socket;
+    }
+
     function startInstantBot() {
-      var botRoom = "BOT-" + Math.random().toString(36).substring(2, 7).toUpperCase();
+      ensureSocket();
+      const botRoom = "BOT-" + Math.random().toString(36).substring(2, 7).toUpperCase();
       currentRoom = botRoom;
       setupArena(botRoom, "Solo vs Bot (" + selectedGame.toUpperCase() + ")", false);
-      if (socket) socket.emit("joinGame", { roomId: botRoom, username: getName(), mode: "bot", gameType: selectedGame });
+      if (socket) {
+        socket.emit("joinGame", { roomId: botRoom, username: getName(), mode: "bot", gameType: selectedGame });
+      }
     }
 
-    function createRoom() {
-      var newRoom = "ROOM-" + Math.random().toString(36).substring(2, 6).toUpperCase();
+    function createRoomAction() {
+      ensureSocket();
+      const newRoom = "ROOM-" + Math.random().toString(36).substring(2, 6).toUpperCase();
       currentRoom = newRoom;
       setupArena(newRoom, "Multiplayer (" + selectedGame.toUpperCase() + ")", true);
-      if (socket) socket.emit("joinGame", { roomId: newRoom, username: getName(), mode: "multiplayer", gameType: selectedGame });
+      if (socket) {
+        socket.emit("joinGame", { roomId: newRoom, username: getName(), mode: "multiplayer", gameType: selectedGame });
+      }
     }
 
-    function joinRoom() {
-      var inp = document.getElementById("input-room-code");
-      var code = inp ? inp.value.trim().toUpperCase() : "";
+    function joinRoomAction() {
+      ensureSocket();
+      const inp = document.getElementById("input-room-code");
+      const code = inp ? inp.value.trim().toUpperCase() : "";
       if (!code) return alert("Please enter room code!");
       currentRoom = code;
       setupArena(code, "Multiplayer (" + selectedGame.toUpperCase() + ")", false);
-      if (socket) socket.emit("joinGame", { roomId: code, username: getName(), mode: "multiplayer", gameType: selectedGame });
-    }
-
-    function hostStart() {
-      if (socket) socket.emit("startGame", currentRoom);
-      document.getElementById("btn-host-start").style.display = "none";
+      if (socket) {
+        socket.emit("joinGame", { roomId: code, username: getName(), mode: "multiplayer", gameType: selectedGame });
+      }
     }
 
     function setupArena(roomCode, tag, isHost) {
@@ -206,7 +222,7 @@
       document.getElementById("display-game-tag").innerText = tag;
       document.getElementById("btn-host-start").style.display = isHost ? "inline-block" : "none";
 
-      var isBluff = (selectedGame === "bluff");
+      const isBluff = (selectedGame === "bluff");
       document.getElementById("bluff-claim-wrapper").style.display = isBluff ? "inline-block" : "none";
       document.getElementById("btn-challenge").style.display = isBluff ? "inline-block" : "none";
       document.getElementById("claim-stat-box").style.display = isBluff ? "inline-block" : "none";
@@ -214,36 +230,85 @@
       switchView("view-arena");
     }
 
-    function playSelected() {
-      if (selectedCards.length === 0) return alert("Select at least 1 card!");
-      var claimVal = (selectedGame === "chudapatti") ? selectedCards[0].value : document.getElementById("claim-select").value;
-      if (socket) socket.emit("playCards", { roomId: currentRoom, cards: selectedCards, claim: claimVal });
-      selectedCards = [];
-      renderCards();
-    }
+    // Direct Event Binders (No inline conflicts)
+    window.addEventListener("DOMContentLoaded", () => {
+      // Game Selection Buttons
+      const chudaBtn = document.getElementById("btn-chuda-action");
+      const chudaCard = document.getElementById("card-chudapatti");
+      const chooseChuda = () => selectGameMode("chudapatti");
+      if (chudaBtn) chudaBtn.addEventListener("click", chooseChuda);
+      if (chudaCard) chudaCard.addEventListener("click", chooseChuda);
 
-    function challengeBluff() {
-      if (socket) socket.emit("challenge", { roomId: currentRoom });
-    }
+      const bluffBtn = document.getElementById("btn-bluff-action");
+      const bluffCard = document.getElementById("card-bluff");
+      const chooseBluff = () => selectGameMode("bluff");
+      if (bluffBtn) bluffBtn.addEventListener("click", chooseBluff);
+      if (bluffCard) bluffCard.addEventListener("click", chooseBluff);
 
-    if (socket) {
-      socket.on("yourCards", function(cards) {
+      // Back Buttons
+      document.getElementById("btn-back-to-games").addEventListener("click", () => switchView("view-game-select"));
+      document.getElementById("btn-back-to-modes").addEventListener("click", () => switchView("view-mode-select"));
+
+      // Mode Selection
+      const botBtn = document.getElementById("btn-bot-action");
+      const botCard = document.getElementById("card-mode-bot");
+      if (botBtn) botBtn.addEventListener("click", startInstantBot);
+      if (botCard) botCard.addEventListener("click", startInstantBot);
+
+      const multiBtn = document.getElementById("btn-multi-action");
+      const multiCard = document.getElementById("card-mode-multi");
+      const goMulti = () => switchView("view-multi-lobby");
+      if (multiBtn) multiBtn.addEventListener("click", goMulti);
+      if (multiCard) multiCard.addEventListener("click", goMulti);
+
+      // Multiplayer Room actions
+      document.getElementById("btn-create-room-act").addEventListener("click", createRoomAction);
+      document.getElementById("btn-join-room-act").addEventListener("click", joinRoomAction);
+
+      // Host start
+      document.getElementById("btn-host-start").addEventListener("click", function() {
+        if (socket) socket.emit("startGame", currentRoom);
+        this.style.display = "none";
+      });
+
+      // Play Cards
+      document.getElementById("btn-play-cards").addEventListener("click", () => {
+        if (selectedCards.length === 0) return alert("Select at least 1 card!");
+        const claimVal = (selectedGame === "chudapatti") ? selectedCards[0].value : document.getElementById("claim-select").value;
+        if (socket) socket.emit("playCards", { roomId: currentRoom, cards: selectedCards, claim: claimVal });
+        selectedCards = [];
+        renderCards();
+      });
+
+      // Challenge
+      document.getElementById("btn-challenge").addEventListener("click", () => {
+        if (socket) socket.emit("challenge", { roomId: currentRoom });
+      });
+
+      // Try initial socket connect
+      ensureSocket();
+    });
+
+    function bindSocketEvents() {
+      if (!socket) return;
+
+      socket.on("yourCards", cards => {
         myCards = cards;
         selectedCards = [];
         renderCards();
       });
 
-      socket.on("gameState", function(state) {
+      socket.on("gameState", state => {
         document.getElementById("pile-count").innerText = state.pileCount;
         document.getElementById("current-claim").innerText = state.currentClaim || "None";
-        var cp = state.players[state.currentTurnIndex];
+        const cp = state.players[state.currentTurnIndex];
         document.getElementById("current-turn").innerText = cp ? cp.name : "-";
 
-        var pl = document.getElementById("players-list");
+        const pl = document.getElementById("players-list");
         if (pl) {
           pl.innerHTML = "";
-          state.players.forEach(function(p) {
-            var li = document.createElement("li");
+          state.players.forEach(p => {
+            const li = document.createElement("li");
             li.innerText = p.name + " (" + p.cardCount + " cards)";
             pl.appendChild(li);
           });
@@ -255,42 +320,42 @@
         }
       });
 
-      socket.on("timerUpdate", function(data) {
-        var bar = document.getElementById("timer-bar");
-        var txt = document.getElementById("timer-text");
+      socket.on("timerUpdate", data => {
+        const bar = document.getElementById("timer-bar");
+        const txt = document.getElementById("timer-text");
         if (!bar || !txt) return;
         txt.innerText = data.timeLeft + "s";
-        var pct = (data.timeLeft / data.total) * 100;
+        const pct = (data.timeLeft / data.total) * 100;
         bar.style.width = pct + "%";
         if (data.timeLeft <= 10) bar.style.backgroundColor = "#ef4444";
         else if (data.timeLeft <= 20) bar.style.backgroundColor = "#f59e0b";
         else bar.style.backgroundColor = "#22c55e";
       });
 
-      socket.on("gameMessage", function(msg) {
-        var ann = document.getElementById("action-announcement");
+      socket.on("gameMessage", msg => {
+        const ann = document.getElementById("action-announcement");
         if (ann) ann.innerText = msg;
       });
 
-      socket.on("gameOver", function(data) {
+      socket.on("gameOver", data => {
         alert("🏆 MATCH OVER! Winner: " + data.winner);
       });
     }
 
     function renderCards() {
-      var box = document.getElementById("cards-hand");
+      const box = document.getElementById("cards-hand");
       if (!box) return;
       box.innerHTML = "";
       document.getElementById("hand-count").innerText = myCards.length;
 
-      myCards.forEach(function(card) {
-        var el = document.createElement("div");
-        var isRed = (card.suit === "♥" || card.suit === "♦");
+      myCards.forEach(card => {
+        const el = document.createElement("div");
+        const isRed = (card.suit === "♥" || card.suit === "♦");
         el.className = "card " + (isRed ? "red" : "");
-        el.innerHTML = "<span>" + card.value + "</span><span style="font-size:1.4rem;">" + card.suit + "</span>";
+        el.innerHTML = "<span>" + card.value + "</span><span style=\"font-size:1.4rem;\">" + card.suit + "</span>";
 
-        el.onclick = function() {
-          var idx = selectedCards.findIndex(function(c) { return c.value === card.value && c.suit === card.suit; });
+        el.addEventListener("click", () => {
+          const idx = selectedCards.findIndex(c => c.value === card.value && c.suit === card.suit);
           if (idx > -1) {
             selectedCards.splice(idx, 1);
             el.classList.remove("selected");
@@ -298,7 +363,7 @@
             selectedCards.push(card);
             el.classList.add("selected");
           }
-        };
+        });
 
         box.appendChild(el);
       });
