@@ -5,38 +5,28 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Himalayan Game Battle Arena</title>
   <link rel="stylesheet" href="style.css">
-  <style>
-    .screen-view { display: none; }
-    .screen-view.active { display: block !important; }
-    .game-card, .mode-card, .action-card, button { cursor: pointer !important; }
-    .trick-area { display: flex; gap: 12px; justify-content: center; align-items: center; min-height: 110px; margin: 10px 0; }
-    .trick-card-box { text-align: center; }
-    .trick-player-label { font-size: 0.8rem; color: #facc15; margin-bottom: 4px; font-weight: bold; }
-    .badge-safe { background: #10b981; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; margin-left: 6px; }
-    .badge-chuda { background: #ef4444; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; margin-left: 6px; font-weight: bold; }
-  </style>
 </head>
 <body>
   <div class="hub-container">
     <header class="main-header">
       <div class="logo-badge">🏔️ HIMALAYAN BATTLE HUB</div>
-      <p class="subtitle">Traditional Himalayan Strategic Card Arena</p>
+      <p class="subtitle">Authentic Pahadi Card Battles & Circular Arena</p>
     </header>
 
     <div class="player-bar">
-      <label>Your Name:</label>
+      <label>Player Name:</label>
       <input type="text" id="global-player-name" value="Player 1" maxlength="15" />
     </div>
 
     <!-- VIEW 1: GAME SELECT -->
     <div id="view-game-select" class="screen-view active">
-      <h2 class="section-title">Select Card Game</h2>
+      <h2 class="section-title">Select Card Battle</h2>
       <div class="game-cards-grid">
         <div class="game-card" id="card-chudapatti">
-          <div class="card-tag">AUTHENTIC PAHHADI</div>
+          <div class="card-tag">AUTHENTIC PAHADI</div>
           <div class="card-icon">🃏</div>
           <h3>Chudapatti</h3>
-          <p>♠A से शुरू, सूट फॉलो, कट/डांड नियम। पहले खाली होने वाला 1st, आखिरी वाला चुड़ा!</p>
+          <p>♠A से शुरुआत, सेम सूट फॉलो, कट/डांड पेनल्टी। पहला खाली विजेता, अंतिम 'चुड़ा'!</p>
           <button type="button" class="btn-primary" id="btn-chuda-action">Play Chudapatti</button>
         </div>
 
@@ -44,7 +34,7 @@
           <div class="card-tag badge-bluff">DECEPTION</div>
           <div class="card-icon">🎭</div>
           <h3>Bluff</h3>
-          <p>Declare claims, challenge opponents, and catch liars before your hand empties.</p>
+          <p>Declare false claims, challenge opponents, and catch liars before your hand empties.</p>
           <button type="button" class="btn-accent" id="btn-bluff-action">Play Bluff</button>
         </div>
       </div>
@@ -59,14 +49,14 @@
         <div class="mode-card" id="card-mode-bot">
           <div class="mode-icon">🤖</div>
           <h3>Play vs AI Bot</h3>
-          <p>Instant match against smart Himalayan Bot with 30-sec timer.</p>
+          <p>Instant table start! Full AI with cut penalty mechanics & 30s quick timer.</p>
           <button type="button" class="btn-primary" id="btn-bot-action">Start Instant Match</button>
         </div>
 
         <div class="mode-card" id="card-mode-multi">
           <div class="mode-icon">👥</div>
           <h3>Online Multiplayer</h3>
-          <p>Create a 6-letter room code or join friends online in real-time.</p>
+          <p>Host a private room with 6-letter room code or join existing live matches.</p>
           <button type="button" class="btn-accent" id="btn-multi-action">Multiplayer Lobby</button>
         </div>
       </div>
@@ -79,30 +69,31 @@
 
       <div class="lobby-actions-grid">
         <div class="action-card" id="card-create-room">
-          <h3>Create Private Room</h3>
-          <p>Generate a unique room code and share it with friends.</p>
-          <button type="button" class="btn-primary" id="btn-create-room-act">➕ Host New Room</button>
+          <h3>Host Private Table</h3>
+          <p>Generate a unique room code to invite up to 4 players.</p>
+          <button type="button" class="btn-primary" id="btn-create-room-act">➕ Host New Table</button>
         </div>
 
         <div class="action-card" id="card-join-room">
-          <h3>Join Existing Room</h3>
-          <p>Enter the 6-character code from your friend.</p>
+          <h3>Join Table</h3>
+          <p>Enter 6-character room code from your friend.</p>
           <div class="join-input-group">
             <input type="text" id="input-room-code" placeholder="e.g. HMB789" />
-            <button type="button" class="btn-accent" id="btn-join-room-act">Join Room</button>
+            <button type="button" class="btn-accent" id="btn-join-room-act">Join</button>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- VIEW 4: ARENA -->
+    <!-- VIEW 4: CIRCULAR CASINO ARENA -->
     <div id="view-arena" class="screen-view">
       <div class="arena-top-bar">
-        <div class="room-pill">Room: <span id="display-room-code">-</span></div>
-        <div class="mode-pill" id="display-game-tag">Game</div>
+        <div class="room-pill">Table: <span id="display-room-code">-</span></div>
+        <div class="mode-pill" id="display-game-tag">Chudapatti</div>
         <button type="button" id="btn-host-start" class="btn-success" style="display:none;">Start Match</button>
       </div>
 
+      <!-- Turn Timer Track -->
       <div id="timer-container">
         <div class="timer-meta">
           <span>⏱️ Turn Timer</span>
@@ -113,43 +104,66 @@
         </div>
       </div>
 
-      <div class="table-surface">
-        <div class="table-stats">
-          <div id="trick-lead-suit-box">चल रहा सूट: <strong id="lead-suit-display" class="glow-text">कोई नहीं</strong></div>
-          <div id="bluff-claim-box" style="display:none;">Claim: <strong id="current-claim">None</strong></div>
-          <div>Turn: <strong id="current-turn" class="glow-text">-</strong></div>
+      <!-- CIRCULAR ARENA STAGE -->
+      <div class="casino-arena-wrap">
+        <!-- TOP PLAYER (BOT / OPPONENT) -->
+        <div class="player-pod" id="pod-top-opponent">
+          <div class="pod-avatar" id="top-avatar">🤖</div>
+          <div class="pod-info">
+            <span class="pod-name" id="top-opponent-name">Himalayan Bot</span>
+            <span class="pod-cards-left"><strong id="top-cards-count">26</strong> पत्ते</span>
+          </div>
         </div>
 
-        <!-- Realtime table ground (Trick) -->
-        <div class="trick-area" id="trick-cards-display"></div>
-
-        <div id="action-announcement">Waiting for match to begin...</div>
-
-        <div class="action-controls">
-          <div id="bluff-claim-wrapper" style="display:none;">
-            <label>Claim Value:</label>
-            <select id="claim-select">
-              <option value="2">2</option><option value="3">3</option><option value="4">4</option>
-              <option value="5">5</option><option value="6">6</option><option value="7">7</option>
-              <option value="8">8</option><option value="9">9</option><option value="10">10</option>
-              <option value="J">J</option><option value="Q">Q</option><option value="K">K</option>
-              <option value="A">A</option>
-            </select>
+        <!-- GREEN FELT CASINO TABLE -->
+        <div class="poker-felt-table">
+          <div class="table-stats-bar">
+            <div id="suit-indicator">सूट: <span id="lead-suit-display" style="color:#fff;">कोई नहीं</span></div>
+            <div id="claim-indicator" style="display:none;">Claim: <span id="current-claim" style="color:#fff;">None</span></div>
+            <div>Turn: <span id="current-turn" style="color:#fff;">-</span></div>
           </div>
 
-          <button type="button" id="btn-play-cards" class="btn-primary">चलें (Play Card)</button>
-          <button type="button" id="btn-challenge" class="btn-danger" style="display:none;">🔥 CHALLENGE / BLUFF!</button>
+          <!-- Animated Center Thrown Cards -->
+          <div class="trick-felt-zone" id="trick-felt-zone"></div>
+
+          <!-- Cut / Daand Banner Alert -->
+          <div class="cut-alert-banner" id="cut-alert-banner">💥 CUT LAGA!</div>
+        </div>
+
+        <!-- BOTTOM PLAYER (CURRENT USER) -->
+        <div class="player-pod" id="pod-current-user">
+          <div class="pod-avatar">👤</div>
+          <div class="pod-info">
+            <span class="pod-name" id="user-pod-name">Player 1</span>
+            <span class="pod-cards-left"><strong id="user-cards-count">0</strong> पत्ते</span>
+          </div>
         </div>
       </div>
 
-      <div class="hand-section">
-        <h3>Your Cards (<span id="hand-count">0</span>) <small style="color:#94a3b8; font-weight:normal;">— Click card to select</small></h3>
-        <div id="cards-hand" class="cards-container"></div>
+      <!-- Realtime commentary bar -->
+      <div id="action-announcement">मैच शुरू होने का इंतज़ार है...</div>
+
+      <!-- Action buttons -->
+      <div class="action-controls">
+        <div id="bluff-claim-wrapper" style="display:none;">
+          <label>Claim Value:</label>
+          <select id="claim-select">
+            <option value="2">2</option><option value="3">3</option><option value="4">4</option>
+            <option value="5">5</option><option value="6">6</option><option value="7">7</option>
+            <option value="8">8</option><option value="9">9</option><option value="10">10</option>
+            <option value="J">J</option><option value="Q">Q</option><option value="K">K</option>
+            <option value="A">A</option>
+          </select>
+        </div>
+
+        <button type="button" id="btn-play-cards" class="btn-primary">🎴 पत्ता फेंकें (Play Card)</button>
+        <button type="button" id="btn-challenge" class="btn-danger" style="display:none;">🔥 CHALLENGE / BLUFF!</button>
       </div>
 
-      <div class="players-panel">
-        <h4>Room Players</h4>
-        <ul id="players-list"></ul>
+      <!-- Hand cards dock -->
+      <div class="hand-section">
+        <h3>आपके पत्ते (<span id="hand-count">0</span>) <small style="color:#94a3b8; font-weight:normal;">— पत्ता चुनकर 'पत्ता फेंकें' दबाएं</small></h3>
+        <div id="cards-hand" class="cards-container"></div>
       </div>
     </div>
   </div>
@@ -157,13 +171,7 @@
   <script src="/socket.io/socket.io.js"></script>
   <script>
     var socket = null;
-    try {
-      if (typeof io !== "undefined") {
-        socket = io();
-      }
-    } catch (e) {
-      console.error("Socket error:", e);
-    }
+    try { if (typeof io !== "undefined") socket = io(); } catch (e) { console.error(e); }
 
     var currentRoom = null;
     var selectedGame = "chudapatti";
@@ -171,10 +179,7 @@
     var selectedCards = [];
 
     function switchView(viewId) {
-      var views = document.querySelectorAll(".screen-view");
-      for (var i = 0; i < views.length; i++) {
-        views[i].classList.remove("active");
-      }
+      document.querySelectorAll(".screen-view").forEach(v => v.classList.remove("active"));
       var target = document.getElementById(viewId);
       if (target) target.classList.add("active");
     }
@@ -186,10 +191,7 @@
 
     function selectGame(game) {
       selectedGame = game;
-      var title = document.getElementById("mode-header-title");
-      if (title) {
-        title.innerText = (game === "chudapatti" ? "Chudapatti" : "Bluff") + " Game Modes";
-      }
+      document.getElementById("mode-header-title").innerText = (game === "chudapatti" ? "Chudapatti" : "Bluff") + " Game Modes";
       switchView("view-mode-select");
     }
 
@@ -198,9 +200,7 @@
       var botRoom = "BOT-" + Math.random().toString(36).substring(2, 7).toUpperCase();
       currentRoom = botRoom;
       setupArena(botRoom, "Solo vs Bot (" + (selectedGame === "chudapatti" ? "Chudapatti" : "Bluff") + ")", false);
-      if (socket) {
-        socket.emit("joinGame", { roomId: botRoom, username: pName, mode: "bot", gameType: selectedGame });
-      }
+      if (socket) socket.emit("joinGame", { roomId: botRoom, username: pName, mode: "bot", gameType: selectedGame });
     }
 
     function createRoom() {
@@ -208,41 +208,35 @@
       var newRoom = "ROOM-" + Math.random().toString(36).substring(2, 6).toUpperCase();
       currentRoom = newRoom;
       setupArena(newRoom, "Multiplayer (" + (selectedGame === "chudapatti" ? "Chudapatti" : "Bluff") + ")", true);
-      if (socket) {
-        socket.emit("joinGame", { roomId: newRoom, username: pName, mode: "multiplayer", gameType: selectedGame });
-      }
+      if (socket) socket.emit("joinGame", { roomId: newRoom, username: pName, mode: "multiplayer", gameType: selectedGame });
     }
 
     function joinRoom() {
       var inp = document.getElementById("input-room-code");
       var code = inp ? inp.value.trim().toUpperCase() : "";
-      if (!code) {
-        alert("Please enter room code!");
-        return;
-      }
+      if (!code) return alert("Please enter room code!");
       var pName = getName();
       currentRoom = code;
       setupArena(code, "Multiplayer (" + (selectedGame === "chudapatti" ? "Chudapatti" : "Bluff") + ")", false);
-      if (socket) {
-        socket.emit("joinGame", { roomId: code, username: pName, mode: "multiplayer", gameType: selectedGame });
-      }
+      if (socket) socket.emit("joinGame", { roomId: code, username: pName, mode: "multiplayer", gameType: selectedGame });
     }
 
     function setupArena(roomCode, tag, isHost) {
       document.getElementById("display-room-code").innerText = roomCode;
       document.getElementById("display-game-tag").innerText = tag;
       document.getElementById("btn-host-start").style.display = isHost ? "inline-block" : "none";
+      document.getElementById("user-pod-name").innerText = getName();
 
       var isBluff = (selectedGame === "bluff");
       document.getElementById("bluff-claim-wrapper").style.display = isBluff ? "inline-block" : "none";
       document.getElementById("btn-challenge").style.display = isBluff ? "inline-block" : "none";
-      document.getElementById("bluff-claim-box").style.display = isBluff ? "inline-block" : "none";
-      document.getElementById("trick-lead-suit-box").style.display = isBluff ? "none" : "inline-block";
+      document.getElementById("claim-indicator").style.display = isBluff ? "inline-block" : "none";
+      document.getElementById("suit-indicator").style.display = isBluff ? "none" : "inline-block";
 
       switchView("view-arena");
     }
 
-    // Attach Click Handlers
+    // Click bindings
     document.getElementById("card-chudapatti").onclick = function() { selectGame("chudapatti"); };
     document.getElementById("btn-chuda-action").onclick = function(e) { e.stopPropagation(); selectGame("chudapatti"); };
 
@@ -260,7 +254,6 @@
 
     document.getElementById("card-create-room").onclick = createRoom;
     document.getElementById("btn-create-room-act").onclick = function(e) { e.stopPropagation(); createRoom(); };
-
     document.getElementById("btn-join-room-act").onclick = joinRoom;
 
     document.getElementById("btn-host-start").onclick = function() {
@@ -269,14 +262,9 @@
     };
 
     document.getElementById("btn-play-cards").onclick = function() {
-      if (selectedCards.length === 0) {
-        alert("कम से कम 1 पत्ता चुनें!");
-        return;
-      }
+      if (selectedCards.length === 0) return alert("पहिले हाथ से 1 पत्ता चुनें!");
       var claimVal = (selectedGame === "chudapatti") ? selectedCards[0].value : document.getElementById("claim-select").value;
-      if (socket) {
-        socket.emit("playCards", { roomId: currentRoom, cards: selectedCards, claim: claimVal });
-      }
+      if (socket) socket.emit("playCards", { roomId: currentRoom, cards: selectedCards, claim: claimVal });
       selectedCards = [];
       renderHand();
     };
@@ -285,7 +273,7 @@
       if (socket) socket.emit("challenge", { roomId: currentRoom });
     };
 
-    // Socket Handlers
+    // Socket listeners
     if (socket) {
       socket.on("yourCards", function(cards) {
         myCards = cards;
@@ -294,53 +282,56 @@
       });
 
       socket.on("gameState", function(state) {
-        var suitSpan = document.getElementById("lead-suit-display");
-        if (suitSpan) suitSpan.innerText = state.leadSuit || "कोई नहीं";
-
-        var claimBox = document.getElementById("current-claim");
-        if (claimBox) claimBox.innerText = state.currentClaim || "None";
-
+        document.getElementById("lead-suit-display").innerText = state.leadSuit || "कोई नहीं";
+        document.getElementById("current-claim").innerText = state.currentClaim || "None";
+        
         var cp = state.players[state.currentTurnIndex];
-        var turnBox = document.getElementById("current-turn");
-        if (turnBox) turnBox.innerText = cp ? cp.name : "-";
+        var turnText = cp ? cp.name : "-";
+        document.getElementById("current-turn").innerText = turnText;
 
-        // Display Trick Cards on ground (Chudapatti)
-        var trickDisplay = document.getElementById("trick-cards-display");
-        if (trickDisplay) {
-          trickDisplay.innerHTML = "";
-          if (state.currentTrick && state.currentTrick.length > 0) {
-            state.currentTrick.forEach(function(t) {
-              var cardBox = document.createElement("div");
-              cardBox.className = "trick-card-box";
+        // Update Circular Player Pods
+        var myName = getName();
+        var me = state.players.find(p => p.name === myName) || state.players[0];
+        var opp = state.players.find(p => p.name !== myName) || state.players[1];
 
-              var label = document.createElement("div");
-              label.className = "trick-player-label";
-              label.innerText = t.playerName;
-
-              var c = t.card;
-              var isRed = (c.suit === "♥" || c.suit === "♦");
-              var cardEl = document.createElement("div");
-              cardEl.className = "card " + (isRed ? "red" : "");
-              cardEl.innerHTML = "<span>" + c.value + "</span><span style='font-size:1.4rem;'>" + c.suit + "</span>";
-
-              cardBox.appendChild(label);
-              cardBox.appendChild(cardEl);
-              trickDisplay.appendChild(cardBox);
-            });
-          }
+        if (me) {
+          document.getElementById("user-cards-count").innerText = me.cardCount;
+          var myPod = document.getElementById("pod-current-user");
+          if (cp && cp.name === me.name) myPod.classList.add("active-turn");
+          else myPod.classList.remove("active-turn");
         }
 
-        var pl = document.getElementById("players-list");
-        if (pl) {
-          pl.innerHTML = "";
-          state.players.forEach(function(p) {
-            var li = document.createElement("li");
-            var badge = "";
-            if (p.isSafe) {
-              badge = p.rankTitle === "चुड़ा" ? "<span class='badge-chuda'>चुड़ा</span>" : "<span class='badge-safe'>" + p.rankTitle + "</span>";
-            }
-            li.innerHTML = p.name + " (" + p.cardCount + " पत्ते)" + badge;
-            pl.appendChild(li);
+        if (opp) {
+          document.getElementById("top-opponent-name").innerText = opp.name;
+          document.getElementById("top-cards-count").innerText = opp.cardCount;
+          document.getElementById("top-avatar").innerText = opp.isBot ? "🤖" : "👤";
+          var oppPod = document.getElementById("pod-top-opponent");
+          if (cp && cp.name === opp.name) oppPod.classList.add("active-turn");
+          else oppPod.classList.remove("active-turn");
+        }
+
+        // Render Animated Trick Cards in Table Center
+        var feltZone = document.getElementById("trick-felt-zone");
+        feltZone.innerHTML = "";
+
+        if (state.currentTrick && state.currentTrick.length > 0) {
+          state.currentTrick.forEach(function(t) {
+            var box = document.createElement("div");
+            box.className = "thrown-card-pod";
+
+            var label = document.createElement("div");
+            label.className = "thrown-player-title";
+            label.innerText = t.playerName;
+
+            var c = t.card;
+            var isRed = (c.suit === "♥" || c.suit === "♦");
+            var cardEl = document.createElement("div");
+            cardEl.className = "card " + (isRed ? "red" : "");
+            cardEl.innerHTML = "<span>" + c.value + "</span><span style='font-size:1.3rem;'>" + c.suit + "</span>";
+
+            box.appendChild(label);
+            box.appendChild(cardEl);
+            feltZone.appendChild(box);
           });
         }
       });
@@ -360,15 +351,23 @@
       socket.on("gameMessage", function(msg) {
         var ann = document.getElementById("action-announcement");
         if (ann) ann.innerText = msg;
+
+        // Trigger Cut Alert Banner Animation
+        if (msg.includes("कट मारा") || msg.includes("सारे पत्ते उनको उठाने पड़े")) {
+          var alertBanner = document.getElementById("cut-alert-banner");
+          alertBanner.style.display = "block";
+          alertBanner.innerText = "💥 CUT LAGA! " + msg;
+          setTimeout(function() { alertBanner.style.display = "none"; }, 2500);
+        }
       });
 
       socket.on("gameOver", function(data) {
-        var res = "🏆 MATCH OVER!\n";
+        var res = "🏆 मैच समाप्त!\n\n";
         if (data.winners && data.winners.length > 0) {
-          res += "1st Winner: " + data.winners[0] + "\n";
+          res += "🥇 1st Winner: " + data.winners[0] + "\n";
         }
         if (data.loser) {
-          res += "चुड़ा: " + data.loser;
+          res += "❌ चुड़ा: " + data.loser + "\n";
         }
         alert(res);
       });
@@ -388,7 +387,7 @@
         var valSpan = document.createElement("span");
         valSpan.innerText = card.value;
         var suitSpan = document.createElement("span");
-        suitSpan.style.fontSize = "1.4rem";
+        suitSpan.style.fontSize = "1.3rem";
         suitSpan.innerText = card.suit;
 
         el.appendChild(valSpan);
@@ -396,12 +395,10 @@
 
         el.onclick = function() {
           if (selectedGame === "chudapatti") {
-            // Chudapatti allows 1 card play per trick
             selectedCards = [card];
             document.querySelectorAll("#cards-hand .card").forEach(c => c.classList.remove("selected"));
             el.classList.add("selected");
           } else {
-            // Bluff allows multiple card plays
             var idx = selectedCards.findIndex(function(c) { return c.value === card.value && c.suit === card.suit; });
             if (idx > -1) {
               selectedCards.splice(idx, 1);
