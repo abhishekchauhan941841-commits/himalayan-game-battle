@@ -257,10 +257,12 @@ function checkPlayerVictory(roomId, player) {
 function nextTurnIndex(room) {
   let idx = room.currentTurnIndex;
   for (let i = 0; i < room.players.length; i++) {
-    // Right-Hand Rule (Anti-Clockwise): (idx - 1)
-    idx = (idx - 1 + room.players.length) % room.players.length;
+    // Pure Anti-Clockwise next step: (idx + 1)
+    idx = (idx + 1) % room.players.length;
     if (!room.players[idx].isSafe) return idx;
   }
+  return idx;
+}
   return idx;
 }
   return idx;
