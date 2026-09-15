@@ -5,11 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Himalayan Game Battle Arena</title>
   <link rel="stylesheet" href="style.css">
-  <script src="/socket.io/socket.io.js"></script>
 </head>
 <body>
   <div class="hub-container">
-    <!-- Top Header -->
     <header class="main-header">
       <div class="logo-badge">🏔️ HIMALAYAN BATTLE HUB</div>
       <p class="subtitle">Traditional Himalayan Strategic Card & Board Arena</p>
@@ -17,54 +15,51 @@
 
     <!-- STEP 1: GAME SELECTOR SCREEN -->
     <div id="screen-game-select" class="screen-view active">
-            <h2 class="section-title">Select Your Game</h2>
+      <h2 class="section-title">Select Your Game</h2>
       <div class="game-cards-grid">
-        <div class="game-card featured" onclick="selectGame('chudapatti')">
+        <div class="game-card" id="card-chudapatti">
           <div class="card-tag">TRADITIONAL</div>
           <div class="card-icon">🃏</div>
           <h3>Chudapatti</h3>
           <p>Traditional Pahadi card shedding battle. Match runs, discard pairs, and finish cards first.</p>
-          <button class="btn-primary">Play Chudapatti</button>
+          <button type="button" class="btn-primary" id="btn-select-chudapatti">Play Chudapatti</button>
         </div>
 
-        <div class="game-card" onclick="selectGame('bluff')">
+        <div class="game-card" id="card-bluff">
           <div class="card-tag" style="background: linear-gradient(135deg, #f59e0b, #d97706);">DECEPTION</div>
           <div class="card-icon">🎭</div>
           <h3>Bluff</h3>
           <p>High-stakes psychological card game. Declare false claims, catch liars, or take the pile!</p>
-          <button class="btn-accent">Play Bluff</button>
+          <button type="button" class="btn-accent" id="btn-select-bluff">Play Bluff</button>
         </div>
       </div>
-    </div>
     </div>
 
     <!-- STEP 2: MODE SELECTOR SCREEN -->
     <div id="screen-mode-select" class="screen-view">
-      <button class="btn-back" onclick="showScreen(screen-game-select)">← Back to Games</button>
+      <button type="button" class="btn-back" id="btn-back-to-games">← Back to Games</button>
       <h2 class="section-title" id="selected-game-title">Chudapatti Battle Modes</h2>
       
       <div class="mode-cards-grid">
-        <!-- Solo with Bot -->
-        <div class="mode-card" onclick="startBotMode()">
+        <div class="mode-card" id="card-bot-mode">
           <div class="mode-icon">🤖</div>
           <h3>Play vs Bot</h3>
-          <p>Single-player practice mode against intelligent AI bot with 30s quick turn timer.</p>
-          <button class="btn-primary">Start Solo Match</button>
+          <p>Single-player practice match against smart AI bot with 30s quick turn timer.</p>
+          <button type="button" class="btn-primary" id="btn-mode-bot">Start Solo Match</button>
         </div>
 
-        <!-- Online Multiplayer -->
-        <div class="mode-card" onclick="showScreen(screen-multiplayer-lobby)">
+        <div class="mode-card" id="card-multi-mode">
           <div class="mode-icon">👥</div>
           <h3>Online Multiplayer</h3>
           <p>Create private rooms, invite friends with room codes, or join existing active lobbies.</p>
-          <button class="btn-accent">Multiplayer Lobby</button>
+          <button type="button" class="btn-accent" id="btn-mode-multi">Multiplayer Lobby</button>
         </div>
       </div>
     </div>
 
-    <!-- STEP 3: MULTIPLAYER LOBBY SCREEN (CREATE / JOIN) -->
+    <!-- STEP 3: MULTIPLAYER LOBBY SCREEN -->
     <div id="screen-multiplayer-lobby" class="screen-view">
-      <button class="btn-back" onclick="showScreen(screen-mode-select)">← Back to Modes</button>
+      <button type="button" class="btn-back" id="btn-back-to-modes">← Back to Modes</button>
       <h2 class="section-title">Multiplayer Room Hub</h2>
 
       <div class="auth-box">
@@ -75,7 +70,7 @@
         <div class="action-card">
           <h3>Create New Room</h3>
           <p>Host a private room and get a unique 6-character room code to share.</p>
-          <button class="btn-primary" onclick="createRoomAction()">➕ Host & Generate Room</button>
+          <button type="button" class="btn-primary" id="btn-create-room">➕ Host & Generate Room</button>
         </div>
 
         <div class="action-card">
@@ -83,7 +78,7 @@
           <p>Enter the 6-character code given by your friend.</p>
           <div class="join-input-group">
             <input type="text" id="join-room-code-input" placeholder="Room Code (e.g. HMB789)" />
-            <button class="btn-accent" onclick="joinRoomAction()">Join</button>
+            <button type="button" class="btn-accent" id="btn-join-room">Join</button>
           </div>
         </div>
       </div>
@@ -94,10 +89,9 @@
       <div class="arena-top-bar">
         <div class="room-pill">Room: <span id="arena-room-id">ROOM101</span></div>
         <div class="mode-pill" id="arena-mode-tag">Multiplayer</div>
-        <button id="btn-start-match" class="btn-success" onclick="startMatchAction()">Start Match</button>
+        <button type="button" id="btn-start-match" class="btn-success">Start Match</button>
       </div>
 
-      <!-- 30s Turn Timer -->
       <div id="timer-container">
         <div class="timer-meta">
           <span>⏱️ Turn Timer</span>
@@ -108,14 +102,13 @@
         </div>
       </div>
 
-      <!-- Center Table Pile -->
       <div class="table-surface">
         <div class="table-stats">
           <div>Center Pile: <strong id="pile-count">0</strong> Cards</div>
           <div>Current Claim: <strong id="current-claim">None</strong></div>
           <div>Active Turn: <strong id="current-turn" class="glow-text">-</strong></div>
         </div>
-        <div id="action-announcement">Waiting for host to start match...</div>
+        <div id="action-announcement">Waiting for match to begin...</div>
 
         <div class="action-controls">
           <label>Declare Claim:</label>
@@ -126,18 +119,16 @@
             <option value="J">J</option><option value="Q">Q</option><option value="K">K</option>
             <option value="A">A</option>
           </select>
-          <button id="btn-play-cards" class="btn-primary" onclick="playSelectedCards()">Play Selected</button>
-          <button id="btn-challenge" class="btn-danger" onclick="challengeBluff()">🔥 CHALLENGE / BLUFF!</button>
+          <button type="button" id="btn-play-cards" class="btn-primary">Play Selected</button>
+          <button type="button" id="btn-challenge" class="btn-danger">🔥 CHALLENGE / BLUFF!</button>
         </div>
       </div>
 
-      <!-- Player Hand -->
       <div class="hand-section">
         <h3>Your Cards (<span id="hand-count">0</span>) <small style="color:#94a3b8;">Click cards to select</small></h3>
         <div id="cards-hand" class="cards-container"></div>
       </div>
 
-      <!-- Lobby Players -->
       <div class="players-panel">
         <h4>Players in Room</h4>
         <ul id="players-list"></ul>
@@ -145,6 +136,7 @@
     </div>
   </div>
 
+  <script src="/socket.io/socket.io.js"></script>
   <script src="game.js"></script>
 </body>
 </html>
