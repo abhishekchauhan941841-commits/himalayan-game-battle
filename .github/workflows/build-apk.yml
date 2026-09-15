@@ -25,26 +25,33 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: Clean & Re-generate Android Project on Cloud
+      - name: Clean & Generate Fresh Android Native Project
         run: |
           npm install
           npm install @capacitor/core@^6.0.0 @capacitor/cli@^6.0.0 @capacitor/android@^6.0.0
-          rm -rf android
+          rm -rf android capacitor.config.json
           npx cap init "Himalayan Battle Hub" "com.himalayan.battlehub" --web-dir "public"
           npx cap add android
+          
+          # Inject live game URL into capacitor config
           node -e '
           const fs = require("fs");
           let cfg = JSON.parse(fs.readFileSync("capacitor.config.json", "utf8"));
           cfg.server = { "url": "https://himalayan-game-battle.onrender.com", "cleartext": true };
           fs.writeFileSync("capacitor.config.json", JSON.stringify(cfg, null, 2));
           '
+          
+          # Ensure dummy Cordova folder exists if requested by legacy gradle tasks
+          mkdir -p android/capacitor-cordova-android-plugins
+          touch android/capacitor-cordova-android-plugins/cordova.variables.gradle
+          
           npx cap sync android
 
       - name: Build APK with Gradle
         working-directory: android
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug
+          ./gradlew assembleDebug --no-daemon
 
       - name: Upload Finished APK
         uses: actions/upload-artifact@v4

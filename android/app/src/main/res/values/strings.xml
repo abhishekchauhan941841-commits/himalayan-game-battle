@@ -1,7 +1,0 @@
-<?xml version='1.0' encoding='utf-8'?>
-<resources>
-    <string name="app_name">Himalayan Battle Hub</string>
-    <string name="title_activity_main">Himalayan Battle Hub</string>
-    <string name="package_name">com.himalayan.battlehub</string>
-    <string name="custom_url_scheme">com.himalayan.battlehub</string>
-</resources>
