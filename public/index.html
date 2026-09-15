@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Himalayan Game Battle Arena</title>
   <link rel="stylesheet" href="style.css">
+  <script src="/socket.io/socket.io.js"></script>
 </head>
 <body>
   <div class="hub-container">
@@ -13,66 +14,65 @@
       <p class="subtitle">Traditional Himalayan Strategic Card Arena</p>
     </header>
 
-    <!-- Global Name Input Bar -->
     <div class="player-bar">
       <label>Your Name:</label>
       <input type="text" id="global-player-name" value="Player 1" maxlength="15" />
     </div>
 
-    <!-- VIEW 1: GAME SELECTION -->
+    <!-- VIEW 1: GAME SELECT -->
     <div id="view-game-select" class="screen-view active">
       <h2 class="section-title">Select Card Game</h2>
       <div class="game-cards-grid">
-        <div class="game-card" id="btn-choose-chudapatti">
+        <div class="game-card" onclick="chooseGame('chudapatti')">
           <div class="card-tag">MATCH & SHED</div>
           <div class="card-icon">🃏</div>
           <h3>Chudapatti</h3>
           <p>Discard matching cards, finish hand first. No bluffs, pure card shedding.</p>
-          <button type="button" class="btn-primary">Play Chudapatti</button>
+          <button type="button" class="btn-primary" onclick="chooseGame('chudapatti'); event.stopPropagation();">Play Chudapatti</button>
         </div>
 
-        <div class="game-card" id="btn-choose-bluff">
+        <div class="game-card" onclick="chooseGame('bluff')">
           <div class="card-tag badge-bluff">DECEPTION</div>
           <div class="card-icon">🎭</div>
           <h3>Bluff</h3>
           <p>Declare claims, challenge opponents, and catch liars before your hand empties.</p>
-          <button type="button" class="btn-accent">Play Bluff</button>
+          <button type="button" class="btn-accent" onclick="chooseGame('bluff'); event.stopPropagation();">Play Bluff</button>
         </div>
       </div>
     </div>
 
-    <!-- VIEW 2: MODE SELECTION -->
+    <!-- VIEW 2: MODE SELECT -->
     <div id="view-mode-select" class="screen-view">
-      <button type="button" class="btn-back" id="btn-back-games">← Change Game</button>
-      <h2 class="section-title" id="mode-header-title">Chudapatti Modes</h2>
+      <button type="button" class="btn-back" onclick="switchView('view-game-select')">← Change Game</button>
+      <h2 class="section-title" id="mode-header-title">Game Modes</h2>
 
       <div class="mode-cards-grid">
-        <div class="mode-card" id="btn-start-bot-mode">
+        <div class="mode-card" onclick="startInstantBot()">
           <div class="mode-icon">🤖</div>
           <h3>Play vs AI Bot</h3>
           <p>Instant start! Quick 30-sec match against intelligent Himalayan Bot.</p>
-          <button type="button" class="btn-primary">Start Instant Match</button>
+          <button type="button" class="btn-primary" onclick="startInstantBot(); event.stopPropagation();">Start Instant Match</button>
         </div>
 
-        <div class="mode-card" id="btn-goto-multiplayer">
+        <div class="mode-card" onclick="switchView('view-multi-lobby')">
           <div class="mode-icon">👥</div>
           <h3>Online Multiplayer</h3>
           <p>Create a 6-letter room code or join friends online.</p>
-          <button type="button" class="btn-accent">Multiplayer Lobby</button>
+          <button type="button" class="btn-accent" onclick="switchView('view-multi-lobby'); event.stopPropagation();">Multiplayer Lobby</button>
         </div>
       </div>
     </div>
 
     <!-- VIEW 3: MULTIPLAYER LOBBY -->
     <div id="view-multi-lobby" class="screen-view">
-      <button type="button" class="btn-back" id="btn-back-modes">← Back to Modes</button>
+      <button type="button" class="btn-back" onclick="switchView('view-mode-select')">← Back to Modes</button>
       <h2 class="section-title">Multiplayer Rooms</h2>
 
       <div class="lobby-actions-grid">
         <div class="action-card">
           <h3>Create Private Room</h3>
           <p>Generate a unique room code and share it with friends.</p>
-          <button type="button" class="btn-primary" id="btn-create-room">➕ Host New Room</button>
+          <button type="button" class="btn-primary" onclick="createRoom()">➕ Host New Room</button>
         </div>
 
         <div class="action-card">
@@ -80,21 +80,20 @@
           <p>Enter the 6-character code from your friend.</p>
           <div class="join-input-group">
             <input type="text" id="input-room-code" placeholder="e.g. HMB789" />
-            <button type="button" class="btn-accent" id="btn-join-room">Join Room</button>
+            <button type="button" class="btn-accent" onclick="joinRoom()">Join Room</button>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- VIEW 4: GAME ARENA -->
+    <!-- VIEW 4: ARENA -->
     <div id="view-arena" class="screen-view">
       <div class="arena-top-bar">
         <div class="room-pill">Room: <span id="display-room-code">-</span></div>
-        <div class="mode-pill" id="display-game-tag">Chudapatti</div>
-        <button type="button" id="btn-host-start" class="btn-success" style="display:none;">Start Match</button>
+        <div class="mode-pill" id="display-game-tag">Game</div>
+        <button type="button" id="btn-host-start" class="btn-success" style="display:none;" onclick="hostStart()">Start Match</button>
       </div>
 
-      <!-- Turn Timer -->
       <div id="timer-container">
         <div class="timer-meta">
           <span>⏱️ Turn Timer</span>
@@ -105,7 +104,6 @@
         </div>
       </div>
 
-      <!-- Casino Felt Table -->
       <div class="table-surface">
         <div class="table-stats">
           <div>Center Pile: <strong id="pile-count">0</strong> Cards</div>
@@ -115,7 +113,6 @@
 
         <div id="action-announcement">Waiting for match to begin...</div>
 
-        <!-- Controls -->
         <div class="action-controls">
           <div id="bluff-claim-wrapper" style="display:none;">
             <label>Claim Value:</label>
@@ -128,12 +125,11 @@
             </select>
           </div>
 
-          <button type="button" id="btn-play-cards" class="btn-primary">Play / Discard Selected</button>
-          <button type="button" id="btn-challenge" class="btn-danger" style="display:none;">🔥 CHALLENGE / BLUFF!</button>
+          <button type="button" id="btn-play-cards" class="btn-primary" onclick="playSelected()">Play / Discard Selected</button>
+          <button type="button" id="btn-challenge" class="btn-danger" style="display:none;" onclick="challengeBluff()">🔥 CHALLENGE / BLUFF!</button>
         </div>
       </div>
 
-      <!-- Hand Container -->
       <div class="hand-section">
         <h3>Your Cards (<span id="hand-count">0</span>) <small style="color:#94a3b8; font-weight:normal;">— Click cards to select</small></h3>
         <div id="cards-hand" class="cards-container"></div>
@@ -146,7 +142,166 @@
     </div>
   </div>
 
-  <script src="/socket.io/socket.io.js"></script>
-  <script src="game.js"></script>
+  <script>
+    var socket = null;
+    try { socket = io(); } catch(e) { console.error("Socket error:", e); }
+
+    var currentRoom = null;
+    var selectedGame = "chudapatti";
+    var myCards = [];
+    var selectedCards = [];
+
+    function switchView(viewId) {
+      var views = document.querySelectorAll(".screen-view");
+      for (var i = 0; i < views.length; i++) {
+        views[i].classList.remove("active");
+        views[i].style.display = "none";
+      }
+      var target = document.getElementById(viewId);
+      if (target) {
+        target.classList.add("active");
+        target.style.display = "block";
+      }
+    }
+
+    function getName() {
+      var inp = document.getElementById("global-player-name");
+      return (inp && inp.value.trim()) ? inp.value.trim() : "Player 1";
+    }
+
+    function chooseGame(game) {
+      selectedGame = game;
+      document.getElementById("mode-header-title").innerText = (game === "chudapatti" ? "Chudapatti" : "Bluff") + " Game Modes";
+      switchView("view-mode-select");
+    }
+
+    function startInstantBot() {
+      var botRoom = "BOT-" + Math.random().toString(36).substring(2, 7).toUpperCase();
+      currentRoom = botRoom;
+      setupArena(botRoom, "Solo vs Bot (" + selectedGame.toUpperCase() + ")", false);
+      if (socket) socket.emit("joinGame", { roomId: botRoom, username: getName(), mode: "bot", gameType: selectedGame });
+    }
+
+    function createRoom() {
+      var newRoom = "ROOM-" + Math.random().toString(36).substring(2, 6).toUpperCase();
+      currentRoom = newRoom;
+      setupArena(newRoom, "Multiplayer (" + selectedGame.toUpperCase() + ")", true);
+      if (socket) socket.emit("joinGame", { roomId: newRoom, username: getName(), mode: "multiplayer", gameType: selectedGame });
+    }
+
+    function joinRoom() {
+      var code = document.getElementById("input-room-code").value.trim().toUpperCase();
+      if (!code) return alert("Please enter room code!");
+      currentRoom = code;
+      setupArena(code, "Multiplayer (" + selectedGame.toUpperCase() + ")", false);
+      if (socket) socket.emit("joinGame", { roomId: code, username: getName(), mode: "multiplayer", gameType: selectedGame });
+    }
+
+    function hostStart() {
+      if (socket) socket.emit("startGame", currentRoom);
+      document.getElementById("btn-host-start").style.display = "none";
+    }
+
+    function setupArena(roomCode, tag, isHost) {
+      document.getElementById("display-room-code").innerText = roomCode;
+      document.getElementById("display-game-tag").innerText = tag;
+      document.getElementById("btn-host-start").style.display = isHost ? "inline-block" : "none";
+
+      var isBluff = (selectedGame === "bluff");
+      document.getElementById("bluff-claim-wrapper").style.display = isBluff ? "inline-block" : "none";
+      document.getElementById("btn-challenge").style.display = isBluff ? "inline-block" : "none";
+      document.getElementById("claim-stat-box").style.display = isBluff ? "inline-block" : "none";
+
+      switchView("view-arena");
+    }
+
+    function playSelected() {
+      if (selectedCards.length === 0) return alert("Select at least 1 card!");
+      var claimVal = (selectedGame === "chudapatti") ? selectedCards[0].value : document.getElementById("claim-select").value;
+      if (socket) socket.emit("playCards", { roomId: currentRoom, cards: selectedCards, claim: claimVal });
+      selectedCards = [];
+      renderCards();
+    }
+
+    function challengeBluff() {
+      if (socket) socket.emit("challenge", { roomId: currentRoom });
+    }
+
+    if (socket) {
+      socket.on("yourCards", function(cards) {
+        myCards = cards;
+        selectedCards = [];
+        renderCards();
+      });
+
+      socket.on("gameState", function(state) {
+        document.getElementById("pile-count").innerText = state.pileCount;
+        document.getElementById("current-claim").innerText = state.currentClaim || "None";
+        var cp = state.players[state.currentTurnIndex];
+        document.getElementById("current-turn").innerText = cp ? cp.name : "-";
+
+        var pl = document.getElementById("players-list");
+        pl.innerHTML = "";
+        state.players.forEach(function(p) {
+          var li = document.createElement("li");
+          li.innerText = p.name + " (" + p.cardCount + " cards)";
+          pl.appendChild(li);
+        });
+
+        if (state.lastPlay) {
+          document.getElementById("action-announcement").innerText = 
+            "👉 " + state.lastPlay.player + " played " + state.lastPlay.cards.length + " card(s) [" + state.lastPlay.claim + "]";
+        }
+      });
+
+      socket.on("timerUpdate", function(data) {
+        var bar = document.getElementById("timer-bar");
+        var txt = document.getElementById("timer-text");
+        if (!bar || !txt) return;
+        txt.innerText = data.timeLeft + "s";
+        var pct = (data.timeLeft / data.total) * 100;
+        bar.style.width = pct + "%";
+        if (data.timeLeft <= 10) bar.style.backgroundColor = "#ef4444";
+        else if (data.timeLeft <= 20) bar.style.backgroundColor = "#f59e0b";
+        else bar.style.backgroundColor = "#22c55e";
+      });
+
+      socket.on("gameMessage", function(msg) {
+        var ann = document.getElementById("action-announcement");
+        if (ann) ann.innerText = msg;
+      });
+
+      socket.on("gameOver", function(data) {
+        alert("🏆 MATCH OVER! Winner: " + data.winner);
+      });
+    }
+
+    function renderCards() {
+      var box = document.getElementById("cards-hand");
+      if (!box) return;
+      box.innerHTML = "";
+      document.getElementById("hand-count").innerText = myCards.length;
+
+      myCards.forEach(function(card) {
+        var el = document.createElement("div");
+        var isRed = (card.suit === "♥" || card.suit === "♦");
+        el.className = "card " + (isRed ? "red" : "");
+        el.innerHTML = "<span>" + card.value + "</span><span style="font-size:1.4rem;">" + card.suit + "</span>";
+
+        el.onclick = function() {
+          var idx = selectedCards.findIndex(function(c) { return c.value === card.value && c.suit === card.suit; });
+          if (idx > -1) {
+            selectedCards.splice(idx, 1);
+            el.classList.remove("selected");
+          } else {
+            selectedCards.push(card);
+            el.classList.add("selected");
+          }
+        };
+
+        box.appendChild(el);
+      });
+    }
+  </script>
 </body>
 </html>
