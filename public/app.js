@@ -49,6 +49,21 @@ const AudioEngine = {
     gain.connect(this.ctx.destination);
     osc.start();
     osc.stop(this.ctx.currentTime + 0.4);
+  },
+  playChallengeSound: function() {
+    this.init();
+    if (!this.ctx) return;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = "square";
+    osc.frequency.setValueAtTime(150, this.ctx.currentTime);
+    osc.frequency.setValueAtTime(300, this.ctx.currentTime + 0.15);
+    gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.35);
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start();
+    osc.stop(this.ctx.currentTime + 0.35);
   }
 };
 
@@ -125,10 +140,11 @@ function setupArena(roomCode, tag, isHost) {
   document.getElementById("btn-host-start").style.display = isHost ? "inline-block" : "none";
 
   var isBluff = (selectedGame === "bluff");
-  document.getElementById("bluff-claim-wrapper").style.display = isBluff ? "inline-block" : "none";
+  document.getElementById("bluff-claim-wrapper").style.display = isBluff ? "inline-flex" : "none";
   document.getElementById("btn-challenge").style.display = isBluff ? "inline-block" : "none";
   document.getElementById("claim-indicator").style.display = isBluff ? "inline-block" : "none";
   document.getElementById("suit-indicator").style.display = isBluff ? "none" : "inline-block";
+  document.getElementById("hand-tip-text").innerText = isBluff ? "💡 Tip: 1 से 4 पत्ते सेलेक्ट करके क्लेम के साथ फेंकें!" : "💡 Tip: अपनी बारी आने पर पत्ते पर क्लिक करें!";
 
   switchView("view-arena");
 }
@@ -153,6 +169,13 @@ function createCardElement(card) {
   el.appendChild(topPip);
   el.appendChild(centerSuit);
   el.appendChild(botPip);
+  return el;
+}
+
+function createFaceDownCard() {
+  var el = document.createElement("div");
+  el.className = "card card-facedown";
+  el.innerHTML = "<div class='card-back-pattern'>♠♥♦♣</div>";
   return el;
 }
 
@@ -199,6 +222,7 @@ window.addEventListener("DOMContentLoaded", function() {
   };
 
   document.getElementById("btn-challenge").onclick = function() {
+    AudioEngine.playChallengeSound();
     if (socket) socket.emit("challenge", { roomId: currentRoom });
   };
 });
@@ -273,34 +297,54 @@ if (socket) {
     });
 
     var feltZone = document.getElementById("trick-throw-zone");
-    if (!state.currentTrick || state.currentTrick.length === 0) {
-      var existingCards = feltZone.querySelectorAll(".thrown-card-pod");
-      if (existingCards.length > 0) {
-        existingCards.forEach(function(c) { c.classList.add("sweep-out"); });
-        setTimeout(function() { feltZone.innerHTML = ""; }, 400);
-      } else {
-        feltZone.innerHTML = "";
+
+    // Chudapatti trick render
+    if (state.gameType === "chudapatti") {
+      if (!state.currentTrick || state.currentTrick.length === 0) {
+        var existingCards = feltZone.querySelectorAll(".thrown-card-pod");
+        if (existingCards.length > 0) {
+          existingCards.forEach(function(c) { c.classList.add("sweep-out"); });
+          setTimeout(() => { feltZone.innerHTML = ""; }, 400);
+        } else {
+          feltZone.innerHTML = "";
+        }
+        return;
       }
-      return;
+
+      var prevCount = feltZone.querySelectorAll(".thrown-card-pod").length;
+      if (state.currentTrick.length > prevCount) AudioEngine.playCardSlide();
+
+      feltZone.innerHTML = "";
+      state.currentTrick.forEach(function(t) {
+        var box = document.createElement("div");
+        box.className = "thrown-card-pod";
+
+        var label = document.createElement("div");
+        label.className = "thrown-player-badge";
+        label.innerText = t.playerName;
+
+        var cardEl = createCardElement(t.card);
+        box.appendChild(label);
+        box.appendChild(cardEl);
+        feltZone.appendChild(box);
+      });
+    } else {
+      // BLUFF: Render Face-down mystery cards in center with count & claim
+      feltZone.innerHTML = "";
+      if (state.pileCount > 0) {
+        var pileBox = document.createElement("div");
+        pileBox.className = "thrown-card-pod";
+
+        var label = document.createElement("div");
+        label.className = "thrown-player-badge";
+        label.innerText = (state.lastPlay ? state.lastPlay.player + " claimed " + state.lastPlay.cards.length + "x [" + state.lastPlay.claim + "]" : "Pile: " + state.pileCount + " cards");
+
+        var cardEl = createFaceDownCard();
+        pileBox.appendChild(label);
+        pileBox.appendChild(cardEl);
+        feltZone.appendChild(pileBox);
+      }
     }
-
-    var prevCount = feltZone.querySelectorAll(".thrown-card-pod").length;
-    if (state.currentTrick.length > prevCount) AudioEngine.playCardSlide();
-
-    feltZone.innerHTML = "";
-    state.currentTrick.forEach(function(t) {
-      var box = document.createElement("div");
-      box.className = "thrown-card-pod";
-
-      var label = document.createElement("div");
-      label.className = "thrown-player-badge";
-      label.innerText = t.playerName;
-
-      var cardEl = createCardElement(t.card);
-      box.appendChild(label);
-      box.appendChild(cardEl);
-      feltZone.appendChild(box);
-    });
   });
 
   socket.on("timerUpdate", function(data) {
@@ -319,11 +363,11 @@ if (socket) {
     var ann = document.getElementById("action-announcement");
     if (ann) ann.innerText = msg;
 
-    if (msg.includes("कट मारा") || msg.includes("सारे पत्ते उनको उठाने पड़े")) {
+    if (msg.includes("कट मारा") || msg.includes("सारे पत्ते उनको उठाने पड़े") || msg.includes("BLUFF पकड़ा")) {
       AudioEngine.playCutHorn();
       var alertBanner = document.getElementById("cut-alert-box");
       alertBanner.style.display = "block";
-      alertBanner.innerText = "💥 CUT LAGA! " + msg;
+      alertBanner.innerText = msg.includes("BLUFF") ? "🔥 BLUFF CHALLENGE!" : "💥 CUT LAGA!";
       setTimeout(function() { alertBanner.style.display = "none"; }, 2500);
 
       if (currentPlayersState && currentPlayersState.length > 0) {
@@ -346,7 +390,7 @@ if (socket) {
   socket.on("gameOver", function(data) {
     var res = "🏆 मैच समाप्त!\n\n";
     if (data.winners && data.winners.length > 0) res += "🥇 1st Winner: " + data.winners[0] + "\n";
-    if (data.loser) res += "❌ चुड़ा: " + data.loser + "\n";
+    if (data.loser) res += "❌ " + (data.gameType === "chudapatti" ? "चुड़ा: " : "Loser: ") + data.loser + "\n";
     alert(res);
   });
 }
@@ -359,6 +403,8 @@ function renderHand() {
 
   myCards.forEach(function(card) {
     var el = createCardElement(card);
+    var isSel = selectedCards.some(function(c) { return c.value === card.value && c.suit === card.suit; });
+    if (isSel) el.classList.add("selected");
 
     el.onclick = function() {
       if (selectedGame === "chudapatti") {
@@ -371,11 +417,16 @@ function renderHand() {
           showToast("अभी आपकी चाल नहीं है! अपनी बारी का इंतज़ार करें।");
         }
       } else {
+        // Bluff: Multi-card selection (up to 4 cards)
         var idx = selectedCards.findIndex(function(c) { return c.value === card.value && c.suit === card.suit; });
         if (idx > -1) {
           selectedCards.splice(idx, 1);
           el.classList.remove("selected");
         } else {
+          if (selectedCards.length >= 4) {
+            showToast("एक बारी में अधिकतम 4 पत्ते ही फेंक सकते हैं!");
+            return;
+          }
           selectedCards.push(card);
           el.classList.add("selected");
         }
