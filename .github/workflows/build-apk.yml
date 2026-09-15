@@ -25,7 +25,7 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: Setup Fresh Android Project & Strip Cordova Dependency
+      - name: Setup Fresh Android Project
         run: |
           npm install
           npm install @capacitor/core@^6.0.0 @capacitor/cli@^6.0.0 @capacitor/android@^6.0.0
@@ -33,7 +33,7 @@ jobs:
           npx cap init "Himalayan Battle Hub" "com.himalayan.battlehub" --web-dir "public"
           npx cap add android
           
-          # Inject live game URL into capacitor config
+          # Server URL config
           node -e '
           const fs = require("fs");
           let cfg = JSON.parse(fs.readFileSync("capacitor.config.json", "utf8"));
@@ -43,10 +43,14 @@ jobs:
           
           npx cap sync android
 
-          # FIX: Comment out the line looking for non-existent cordova.variables.gradle
-          if [ -f android/app/capacitor.build.gradle ]; then
-            sed -i 's/.*cordova\.variables\.gradle.*/\/\/ Cordova line skipped/' android/app/capacitor.build.gradle
-          fi
+          # CRITICAL: Empty the capacitor.build.gradle file completely so no missing scripts are queried
+          echo "// Empty capacitor build scripts" > android/app/capacitor.build.gradle
+
+          # Also create fallback files at both relative target locations just in case
+          mkdir -p capacitor-cordova-android-plugins
+          touch capacitor-cordova-android-plugins/cordova.variables.gradle
+          mkdir -p android/capacitor-cordova-android-plugins
+          touch android/capacitor-cordova-android-plugins/cordova.variables.gradle
 
       - name: Build APK with Gradle
         working-directory: android
