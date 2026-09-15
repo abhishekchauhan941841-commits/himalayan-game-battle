@@ -5,6 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Himalayan Game Battle Arena</title>
   <link rel="stylesheet" href="style.css">
+  <style>
+    .bot-selector-wrapper { margin-top: 10px; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: bold; font-size: 0.85rem; }
+    .bot-select-dropdown { padding: 4px 10px; border-radius: 6px; background: #090d16; border: 1px solid #38bdf8; color: #fff; font-weight: bold; }
+    .toast-error { display: none; position: fixed; top: 16px; left: 50%; transform: translateX(-50%); background: #dc2626; color: white; padding: 10px 22px; border-radius: 30px; font-weight: 800; font-size: 0.9rem; box-shadow: 0 10px 30px rgba(220, 38, 38, 0.7); z-index: 9999; border: 2px solid #fecaca; }
+  </style>
 </head>
 <body>
   <div id="toast-msg" class="toast-error">Error</div>
@@ -117,12 +122,11 @@
         </div>
       </div>
 
-      <!-- CIRCULAR VIEWPORT WHERE TABLE & PLAYERS LIVE AROUND A CIRCLE -->
-      <div class="stadium-viewport" id="stadium-viewport">
-        <!-- Surrounding bots & players injected dynamically into fixed slots -->
+      <div class="circular-arena-wrapper" id="stadium-viewport">
+        <!-- Radial dynamic circular pods layer -->
         <div id="arena-players-layer"></div>
 
-        <!-- GREEN FELT TABLE IN CENTER -->
+        <!-- Center green felt table -->
         <div class="green-poker-table">
           <div class="table-glass-bar">
             <div id="suit-indicator">सूट: <span id="lead-suit-display" style="color:#fff;">कोई नहीं</span></div>
@@ -165,7 +169,6 @@
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
-    // --- SYNTHESIZED CASINO AUDIO FX ---
     const AudioEngine = {
       ctx: null,
       init: function() {
@@ -194,8 +197,8 @@
         const osc = this.ctx.createOscillator();
         const gain = this.ctx.createGain();
         osc.type = "sine";
-        osc.frequency.setValueAtTime(587.33, this.ctx.currentTime); // D5
-        osc.frequency.exponentialRampToValueAtTime(880, this.ctx.currentTime + 0.2); // A5
+        osc.frequency.setValueAtTime(587.33, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(880, this.ctx.currentTime + 0.2);
         gain.gain.setValueAtTime(0.25, this.ctx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.35);
         osc.connect(gain);
@@ -228,6 +231,7 @@
     var myCards = [];
     var selectedCards = [];
     var isMyTurn = false;
+    var currentPlayersState = [];
 
     function showToast(msg) {
       var t = document.getElementById("toast-msg");
@@ -380,6 +384,7 @@
       });
 
       socket.on("gameState", function(state) {
+        currentPlayersState = state.players;
         document.getElementById("lead-suit-display").innerText = state.leadSuit || "कोई नहीं";
         document.getElementById("current-claim").innerText = state.currentClaim || "None";
         
@@ -392,22 +397,18 @@
         isMyTurn = (cp && cp.name === myName);
         if (!wasMyTurn && isMyTurn) AudioEngine.playTurnBell();
 
-        // RENDER TRUE MATHEMATICAL OVAL CIRCLE SEATS
+        // RENDER TRUE MATHEMATICAL OVAL PERIMETER SEATS
         var layer = document.getElementById("arena-players-layer");
         layer.innerHTML = "";
 
         var totalPlayers = state.players.length;
-        var myIndex = state.players.findIndex(p => p.name === myName);
+        var myIndex = state.players.findIndex(function(p) { return p.name === myName; });
         if (myIndex === -1) myIndex = 0;
 
-        // Container is 100% width x 380px height. Center is (50%, 50%)
-        // Oval Radii: Rx = 45% of width, Ry = 145px height
         state.players.forEach(function(p, i) {
-          // Calculate angle so you (myIndex) are ALWAYS at 90 deg (Bottom Center)
           var relativeIdx = (i - myIndex + totalPlayers) % totalPlayers;
           var angle = (Math.PI / 2) + (relativeIdx * (2 * Math.PI / totalPlayers));
 
-          // Calculate Oval Positions (%)
           var xPercent = 50 + 44 * Math.cos(angle);
           var yPercent = 50 + 42 * Math.sin(angle);
 
@@ -418,11 +419,26 @@
           pod.style.left = xPercent + "%";
           pod.style.top = yPercent + "%";
 
-          pod.innerHTML = "<div class="pod-avatar">" + (p.isBot ? "🤖" : "👤") + "</div>" +
-                          "<div class="pod-details">" +
-                            "<span class="pod-name">" + p.name + "</span>" +
-                            "<span class="pod-meta"><strong>" + p.cardCount + "</strong> पत्ते" + (p.isSafe ? " (" + p.rankTitle + ")" : "") + "</span>" +
-                          "</div>";
+          var avatarDiv = document.createElement("div");
+          avatarDiv.className = "pod-avatar";
+          avatarDiv.innerText = p.isBot ? "🤖" : "👤";
+
+          var detailsDiv = document.createElement("div");
+          detailsDiv.className = "pod-details";
+
+          var nameSpan = document.createElement("span");
+          nameSpan.className = "pod-name";
+          nameSpan.innerText = p.name;
+
+          var metaSpan = document.createElement("span");
+          metaSpan.className = "pod-meta";
+          metaSpan.innerHTML = "<strong>" + p.cardCount + "</strong> पत्ते" + (p.isSafe ? " (" + p.rankTitle + ")" : "");
+
+          detailsDiv.appendChild(nameSpan);
+          detailsDiv.appendChild(metaSpan);
+
+          pod.appendChild(avatarDiv);
+          pod.appendChild(detailsDiv);
           layer.appendChild(pod);
         });
 
@@ -431,8 +447,8 @@
         if (!state.currentTrick || state.currentTrick.length === 0) {
           var existingCards = feltZone.querySelectorAll(".thrown-card-pod");
           if (existingCards.length > 0) {
-            existingCards.forEach(c => c.classList.add("sweep-out"));
-            setTimeout(() => { feltZone.innerHTML = ""; }, 400);
+            existingCards.forEach(function(c) { c.classList.add("sweep-out"); });
+            setTimeout(function() { feltZone.innerHTML = ""; }, 400);
           } else {
             feltZone.innerHTML = "";
           }
@@ -481,19 +497,20 @@
           alertBanner.innerText = "💥 CUT LAGA! " + msg;
           setTimeout(function() { alertBanner.style.display = "none"; }, 2500);
 
-          // Find penalty receiver and highlight their pod
-          state.players.forEach(function(p, idx) {
-            if (msg.includes(p.name)) {
-              var targetPod = document.getElementById("pod-player-" + idx);
-              if (targetPod) {
-                targetPod.classList.add("cut-target");
-                setTimeout(function() { targetPod.classList.remove("cut-target"); }, 2400);
+          if (currentPlayersState && currentPlayersState.length > 0) {
+            currentPlayersState.forEach(function(p, idx) {
+              if (msg.includes(p.name)) {
+                var targetPod = document.getElementById("pod-player-" + idx);
+                if (targetPod) {
+                  targetPod.classList.add("cut-target");
+                  setTimeout(function() { targetPod.classList.remove("cut-target"); }, 2400);
+                }
               }
-            }
-          });
+            });
+          }
 
           var existingCards = document.querySelectorAll("#trick-throw-zone .thrown-card-pod");
-          existingCards.forEach(c => c.classList.add("penalty-out"));
+          existingCards.forEach(function(c) { c.classList.add("penalty-out"); });
         }
       });
 
@@ -520,7 +537,7 @@
               sendCardPlay([card]);
             } else {
               selectedCards = [card];
-              document.querySelectorAll("#cards-hand .card").forEach(c => c.classList.remove("selected"));
+              document.querySelectorAll("#cards-hand .card").forEach(function(c) { c.classList.remove("selected"); });
               el.classList.add("selected");
               showToast("अभी आपकी चाल नहीं है! अपनी बारी का इंतज़ार करें।");
             }
