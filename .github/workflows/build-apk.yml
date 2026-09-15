@@ -25,7 +25,7 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: Setup Android Project and Fix Cordova Variables
+      - name: Setup Fresh Android Project & Strip Cordova Dependency
         run: |
           npm install
           npm install @capacitor/core@^6.0.0 @capacitor/cli@^6.0.0 @capacitor/android@^6.0.0
@@ -43,21 +43,16 @@ jobs:
           
           npx cap sync android
 
-          # CRITICAL FIX: Ensure capacitor-cordova-android-plugins and cordova.variables.gradle exist AFTER cap sync
-          mkdir -p android/capacitor-cordova-android-plugins
-          cat << 'CORD_EOF' > android/capacitor-cordova-android-plugins/cordova.variables.gradle
-          ext {
-              cdvMinSdkVersion = 22
-              cdvCompileSdkVersion = 34
-              cdvTargetSdkVersion = 34
-          }
-          CORD_EOF
+          # FIX: Comment out the line looking for non-existent cordova.variables.gradle
+          if [ -f android/app/capacitor.build.gradle ]; then
+            sed -i 's/.*cordova\.variables\.gradle.*/\/\/ Cordova line skipped/' android/app/capacitor.build.gradle
+          fi
 
       - name: Build APK with Gradle
         working-directory: android
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon --stacktrace
+          ./gradlew assembleDebug --no-daemon
 
       - name: Upload Finished APK
         uses: actions/upload-artifact@v4
