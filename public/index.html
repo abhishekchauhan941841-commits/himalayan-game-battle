@@ -10,88 +10,91 @@
   <div class="hub-container">
     <header class="main-header">
       <div class="logo-badge">🏔️ HIMALAYAN BATTLE HUB</div>
-      <p class="subtitle">Traditional Himalayan Strategic Card & Board Arena</p>
+      <p class="subtitle">Traditional Himalayan Strategic Card Arena</p>
     </header>
 
-    <!-- STEP 1: GAME SELECTOR SCREEN -->
-    <div id="screen-game-select" class="screen-view active">
-      <h2 class="section-title">Select Your Game</h2>
+    <!-- Global Name Input Bar -->
+    <div class="player-bar">
+      <label>Your Name:</label>
+      <input type="text" id="global-player-name" value="Player 1" maxlength="15" />
+    </div>
+
+    <!-- VIEW 1: GAME SELECTION -->
+    <div id="view-game-select" class="screen-view active">
+      <h2 class="section-title">Select Card Game</h2>
       <div class="game-cards-grid">
-        <div class="game-card" id="card-chudapatti">
-          <div class="card-tag">TRADITIONAL</div>
+        <div class="game-card" id="btn-choose-chudapatti">
+          <div class="card-tag">MATCH & SHED</div>
           <div class="card-icon">🃏</div>
           <h3>Chudapatti</h3>
-          <p>Traditional Pahadi card shedding battle. Match runs, discard pairs, and finish cards first.</p>
-          <button type="button" class="btn-primary" id="btn-select-chudapatti">Play Chudapatti</button>
+          <p>Discard matching cards, finish hand first. No bluffs, pure card shedding.</p>
+          <button type="button" class="btn-primary">Play Chudapatti</button>
         </div>
 
-        <div class="game-card" id="card-bluff">
-          <div class="card-tag" style="background: linear-gradient(135deg, #f59e0b, #d97706);">DECEPTION</div>
+        <div class="game-card" id="btn-choose-bluff">
+          <div class="card-tag badge-bluff">DECEPTION</div>
           <div class="card-icon">🎭</div>
           <h3>Bluff</h3>
-          <p>High-stakes psychological card game. Declare false claims, catch liars, or take the pile!</p>
-          <button type="button" class="btn-accent" id="btn-select-bluff">Play Bluff</button>
+          <p>Declare claims, challenge opponents, and catch liars before your hand empties.</p>
+          <button type="button" class="btn-accent">Play Bluff</button>
         </div>
       </div>
     </div>
 
-    <!-- STEP 2: MODE SELECTOR SCREEN -->
-    <div id="screen-mode-select" class="screen-view">
-      <button type="button" class="btn-back" id="btn-back-to-games">← Back to Games</button>
-      <h2 class="section-title" id="selected-game-title">Chudapatti Battle Modes</h2>
-      
+    <!-- VIEW 2: MODE SELECTION -->
+    <div id="view-mode-select" class="screen-view">
+      <button type="button" class="btn-back" id="btn-back-games">← Change Game</button>
+      <h2 class="section-title" id="mode-header-title">Chudapatti Modes</h2>
+
       <div class="mode-cards-grid">
-        <div class="mode-card" id="card-bot-mode">
+        <div class="mode-card" id="btn-start-bot-mode">
           <div class="mode-icon">🤖</div>
-          <h3>Play vs Bot</h3>
-          <p>Single-player practice match against smart AI bot with 30s quick turn timer.</p>
-          <button type="button" class="btn-primary" id="btn-mode-bot">Start Solo Match</button>
+          <h3>Play vs AI Bot</h3>
+          <p>Instant start! Quick 30-sec match against intelligent Himalayan Bot.</p>
+          <button type="button" class="btn-primary">Start Instant Match</button>
         </div>
 
-        <div class="mode-card" id="card-multi-mode">
+        <div class="mode-card" id="btn-goto-multiplayer">
           <div class="mode-icon">👥</div>
           <h3>Online Multiplayer</h3>
-          <p>Create private rooms, invite friends with room codes, or join existing active lobbies.</p>
-          <button type="button" class="btn-accent" id="btn-mode-multi">Multiplayer Lobby</button>
+          <p>Create a 6-letter room code or join friends online.</p>
+          <button type="button" class="btn-accent">Multiplayer Lobby</button>
         </div>
       </div>
     </div>
 
-    <!-- STEP 3: MULTIPLAYER LOBBY SCREEN -->
-    <div id="screen-multiplayer-lobby" class="screen-view">
-      <button type="button" class="btn-back" id="btn-back-to-modes">← Back to Modes</button>
-      <h2 class="section-title">Multiplayer Room Hub</h2>
-
-      <div class="auth-box">
-        <input type="text" id="player-name-input" placeholder="Enter Your Player Name" />
-      </div>
+    <!-- VIEW 3: MULTIPLAYER LOBBY -->
+    <div id="view-multi-lobby" class="screen-view">
+      <button type="button" class="btn-back" id="btn-back-modes">← Back to Modes</button>
+      <h2 class="section-title">Multiplayer Rooms</h2>
 
       <div class="lobby-actions-grid">
         <div class="action-card">
-          <h3>Create New Room</h3>
-          <p>Host a private room and get a unique 6-character room code to share.</p>
-          <button type="button" class="btn-primary" id="btn-create-room">➕ Host & Generate Room</button>
+          <h3>Create Private Room</h3>
+          <p>Generate a unique room code and share it with friends.</p>
+          <button type="button" class="btn-primary" id="btn-create-room">➕ Host New Room</button>
         </div>
 
         <div class="action-card">
           <h3>Join Existing Room</h3>
-          <p>Enter the 6-character code given by your friend.</p>
+          <p>Enter the 6-character code from your friend.</p>
           <div class="join-input-group">
-            <input type="text" id="join-room-code-input" placeholder="Room Code (e.g. HMB789)" />
-            <button type="button" class="btn-accent" id="btn-join-room">Join</button>
+            <input type="text" id="input-room-code" placeholder="e.g. HMB789" />
+            <button type="button" class="btn-accent" id="btn-join-room">Join Room</button>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- STEP 4: GAMEPLAY ARENA SCREEN -->
-    <div id="screen-game-arena" class="screen-view">
+    <!-- VIEW 4: GAME ARENA -->
+    <div id="view-arena" class="screen-view">
       <div class="arena-top-bar">
-        <div class="room-pill">Room: <span id="arena-room-id">ROOM101</span></div>
-        <div class="mode-pill" id="arena-mode-tag">Multiplayer</div>
-        <button type="button" id="btn-start-match" class="btn-success">Start Match</button>
+        <div class="room-pill">Room: <span id="display-room-code">-</span></div>
+        <div class="mode-pill" id="display-game-tag">Chudapatti</div>
+        <button type="button" id="btn-host-start" class="btn-success" style="display:none;">Start Match</button>
       </div>
 
+      <!-- Turn Timer -->
       <div id="timer-container">
         <div class="timer-meta">
           <span>⏱️ Turn Timer</span>
@@ -102,35 +105,42 @@
         </div>
       </div>
 
+      <!-- Casino Felt Table -->
       <div class="table-surface">
         <div class="table-stats">
           <div>Center Pile: <strong id="pile-count">0</strong> Cards</div>
-          <div>Current Claim: <strong id="current-claim">None</strong></div>
-          <div>Active Turn: <strong id="current-turn" class="glow-text">-</strong></div>
+          <div id="claim-stat-box">Claim: <strong id="current-claim">None</strong></div>
+          <div>Turn: <strong id="current-turn" class="glow-text">-</strong></div>
         </div>
+
         <div id="action-announcement">Waiting for match to begin...</div>
 
+        <!-- Controls -->
         <div class="action-controls">
-          <label>Declare Claim:</label>
-          <select id="claim-select">
-            <option value="2">2</option><option value="3">3</option><option value="4">4</option>
-            <option value="5">5</option><option value="6">6</option><option value="7">7</option>
-            <option value="8">8</option><option value="9">9</option><option value="10">10</option>
-            <option value="J">J</option><option value="Q">Q</option><option value="K">K</option>
-            <option value="A">A</option>
-          </select>
-          <button type="button" id="btn-play-cards" class="btn-primary">Play Selected</button>
-          <button type="button" id="btn-challenge" class="btn-danger">🔥 CHALLENGE / BLUFF!</button>
+          <div id="bluff-claim-wrapper" style="display:none;">
+            <label>Claim Value:</label>
+            <select id="claim-select">
+              <option value="2">2</option><option value="3">3</option><option value="4">4</option>
+              <option value="5">5</option><option value="6">6</option><option value="7">7</option>
+              <option value="8">8</option><option value="9">9</option><option value="10">10</option>
+              <option value="J">J</option><option value="Q">Q</option><option value="K">K</option>
+              <option value="A">A</option>
+            </select>
+          </div>
+
+          <button type="button" id="btn-play-cards" class="btn-primary">Play / Discard Selected</button>
+          <button type="button" id="btn-challenge" class="btn-danger" style="display:none;">🔥 CHALLENGE / BLUFF!</button>
         </div>
       </div>
 
+      <!-- Hand Container -->
       <div class="hand-section">
-        <h3>Your Cards (<span id="hand-count">0</span>) <small style="color:#94a3b8;">Click cards to select</small></h3>
+        <h3>Your Cards (<span id="hand-count">0</span>) <small style="color:#94a3b8; font-weight:normal;">— Click cards to select</small></h3>
         <div id="cards-hand" class="cards-container"></div>
       </div>
 
       <div class="players-panel">
-        <h4>Players in Room</h4>
+        <h4>Room Players</h4>
         <ul id="players-list"></ul>
       </div>
     </div>

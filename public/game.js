@@ -1,186 +1,164 @@
 
-// Immediate screen switcher
-window.showScreen = function(id) {
-  var screens = document.querySelectorAll(".screen-view");
-  for (var i = 0; i < screens.length; i++) {
-    screens[i].classList.remove("active");
-  }
-  var target = document.getElementById(id);
-  if (target) target.classList.add("active");
-};
-
-window.selectGame = function(name) {
-  var title = document.getElementById("selected-game-title");
-  if (title) title.innerText = (name === "chudapatti" ? "Chudapatti" : "Bluff") + " Battle Modes";
-  window.selectedGame = name;
-  window.showScreen("screen-mode-select");
-};
-
-window.selectedGame = "chudapatti";
-window.currentRoom = null;
-window.myName = "Player";
-window.myCards = [];
-window.selectedCards = [];
-
-// Socket initialization
 var socket = null;
 try {
-  if (typeof io !== "undefined") {
-    socket = io();
-  }
-} catch(e) {
-  console.log("Socket init fallback:", e);
+  socket = io();
+} catch (e) {
+  console.error("Socket error:", e);
 }
 
-function initListeners() {
-  var chuda = document.getElementById("card-chudapatti");
-  if (chuda) {
-    chuda.onclick = function() { window.selectGame("chudapatti"); };
-  }
-  var btnChuda = document.getElementById("btn-select-chudapatti");
-  if (btnChuda) {
-    btnChuda.onclick = function(e) { e.stopPropagation(); window.selectGame("chudapatti"); };
-  }
+var currentRoom = null;
+var selectedGame = "chudapatti";
+var myCards = [];
+var selectedCards = [];
 
-  var bluff = document.getElementById("card-bluff");
-  if (bluff) {
-    bluff.onclick = function() { window.selectGame("bluff"); };
-  }
-  var btnBluff = document.getElementById("btn-select-bluff");
-  if (btnBluff) {
-    btnBluff.onclick = function(e) { e.stopPropagation(); window.selectGame("bluff"); };
-  }
+function switchScreen(id) {
+  document.querySelectorAll(".screen-view").forEach(s => s.classList.remove("active"));
+  var el = document.getElementById(id);
+  if (el) el.classList.add("active");
+}
 
-  var backBtn1 = document.getElementById("btn-back-to-games");
-  if (backBtn1) backBtn1.onclick = function() { window.showScreen("screen-game-select"); };
+function getPlayerName() {
+  var el = document.getElementById("global-player-name");
+  return (el && el.value.trim()) ? el.value.trim() : "Player 1";
+}
 
-  var backBtn2 = document.getElementById("btn-back-to-modes");
-  if (backBtn2) backBtn2.onclick = function() { window.showScreen("screen-mode-select"); };
-
-  var botCard = document.getElementById("card-bot-mode");
-  var botBtn = document.getElementById("btn-mode-bot");
-  var launchBot = function() {
-    var pName = prompt("Enter your name:", "Player") || "Player";
-    window.myName = pName;
-    var botRoom = "BOT-" + Math.random().toString(36).substring(2, 7).toUpperCase();
-    window.currentRoom = botRoom;
-    if (socket) socket.emit("createOrJoin", { roomId: botRoom, username: window.myName, mode: "bot", gameType: window.selectedGame });
-    document.getElementById("arena-room-id").innerText = botRoom;
-    document.getElementById("arena-mode-tag").innerText = "Solo vs Bot";
-    document.getElementById("btn-start-match").style.display = "inline-block";
-    window.showScreen("screen-game-arena");
+document.addEventListener("DOMContentLoaded", function() {
+  // Step 1: Game Choice
+  document.getElementById("btn-choose-chudapatti").onclick = function() {
+    selectedGame = "chudapatti";
+    document.getElementById("mode-header-title").innerText = "Chudapatti Game Modes";
+    switchScreen("view-mode-select");
   };
-  if (botCard) botCard.onclick = launchBot;
-  if (botBtn) botBtn.onclick = function(e) { e.stopPropagation(); launchBot(); };
 
-  var multiCard = document.getElementById("card-multi-mode");
-  var multiBtn = document.getElementById("btn-mode-multi");
-  var launchMulti = function() { window.showScreen("screen-multiplayer-lobby"); };
-  if (multiCard) multiCard.onclick = launchMulti;
-  if (multiBtn) multiBtn.onclick = function(e) { e.stopPropagation(); launchMulti(); };
+  document.getElementById("btn-choose-bluff").onclick = function() {
+    selectedGame = "bluff";
+    document.getElementById("mode-header-title").innerText = "Bluff Game Modes";
+    switchScreen("view-mode-select");
+  };
 
-  var createRoom = document.getElementById("btn-create-room");
-  if (createRoom) {
-    createRoom.onclick = function() {
-      var name = document.getElementById("player-name-input").value.trim();
-      if (!name) return alert("Please enter your player name first!");
-      window.myName = name;
-      var newRoom = "HMB-" + Math.random().toString(36).substring(2, 8).toUpperCase();
-      window.currentRoom = newRoom;
-      if (socket) socket.emit("createOrJoin", { roomId: newRoom, username: window.myName, mode: "multiplayer", gameType: window.selectedGame });
-      document.getElementById("arena-room-id").innerText = newRoom;
-      document.getElementById("arena-mode-tag").innerText = "Online Multiplayer";
-      document.getElementById("btn-start-match").style.display = "inline-block";
-      window.showScreen("screen-game-arena");
-    };
-  }
+  // Back Navigation
+  document.getElementById("btn-back-games").onclick = function() { switchScreen("view-game-select"); };
+  document.getElementById("btn-back-modes").onclick = function() { switchScreen("view-mode-select"); };
 
-  var joinRoom = document.getElementById("btn-join-room");
-  if (joinRoom) {
-    joinRoom.onclick = function() {
-      var name = document.getElementById("player-name-input").value.trim();
-      var code = document.getElementById("join-room-code-input").value.trim();
-      if (!name) return alert("Enter player name!");
-      if (!code) return alert("Enter room code!");
-      window.myName = name;
-      window.currentRoom = code;
-      if (socket) socket.emit("createOrJoin", { roomId: code, username: window.myName, mode: "multiplayer", gameType: window.selectedGame });
-      document.getElementById("arena-room-id").innerText = code;
-      document.getElementById("arena-mode-tag").innerText = "Online Multiplayer";
-      document.getElementById("btn-start-match").style.display = "none";
-      window.showScreen("screen-game-arena");
-    };
-  }
+  // Bot Mode (Instant start)
+  document.getElementById("btn-start-bot-mode").onclick = function() {
+    var pName = getPlayerName();
+    var botRoom = "BOT-" + Math.random().toString(36).substring(2, 7).toUpperCase();
+    currentRoom = botRoom;
 
-  var startBtn = document.getElementById("btn-start-match");
-  if (startBtn) {
-    startBtn.onclick = function() {
-      if (socket) socket.emit("startGame", window.currentRoom);
-      startBtn.style.display = "none";
-    };
-  }
+    setupArenaUI(botRoom, "Solo vs Bot (AI)", false);
+    if (socket) {
+      socket.emit("joinGame", { roomId: botRoom, username: pName, mode: "bot", gameType: selectedGame });
+    }
+  };
 
-  var playBtn = document.getElementById("btn-play-cards");
-  if (playBtn) {
-    playBtn.onclick = function() {
-      if (window.selectedCards.length === 0) return alert("Select at least 1 card!");
-      var claim = document.getElementById("claim-select").value;
-      if (socket) socket.emit("playCards", { roomId: window.currentRoom, cards: window.selectedCards, claim: claim });
-      window.selectedCards = [];
-      renderHand();
-    };
-  }
+  // Go to Multiplayer Lobby
+  document.getElementById("btn-goto-multiplayer").onclick = function() {
+    switchScreen("view-multi-lobby");
+  };
 
-  var chalBtn = document.getElementById("btn-challenge");
-  if (chalBtn) {
-    chalBtn.onclick = function() {
-      if (socket) socket.emit("challenge", { roomId: window.currentRoom });
-    };
-  }
-}
+  // Create Room
+  document.getElementById("btn-create-room").onclick = function() {
+    var pName = getPlayerName();
+    var newRoom = "ROOM-" + Math.random().toString(36).substring(2, 6).toUpperCase();
+    currentRoom = newRoom;
 
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", initListeners);
-} else {
-  initListeners();
+    setupArenaUI(newRoom, "Multiplayer (" + selectedGame.toUpperCase() + ")", true);
+    if (socket) {
+      socket.emit("joinGame", { roomId: newRoom, username: pName, mode: "multiplayer", gameType: selectedGame });
+    }
+  };
+
+  // Join Room
+  document.getElementById("btn-join-room").onclick = function() {
+    var code = document.getElementById("input-room-code").value.trim().toUpperCase();
+    if (!code) return alert("Please enter room code!");
+    var pName = getPlayerName();
+    currentRoom = code;
+
+    setupArenaUI(code, "Multiplayer (" + selectedGame.toUpperCase() + ")", false);
+    if (socket) {
+      socket.emit("joinGame", { roomId: code, username: pName, mode: "multiplayer", gameType: selectedGame });
+    }
+  };
+
+  // Host Start Match button
+  document.getElementById("btn-host-start").onclick = function() {
+    if (socket) socket.emit("startGame", currentRoom);
+    this.style.display = "none";
+  };
+
+  // Play Selected Cards
+  document.getElementById("btn-play-cards").onclick = function() {
+    if (selectedCards.length === 0) return alert("Select at least 1 card from your hand!");
+    var claimVal = (selectedGame === "chudapatti") ? selectedCards[0].value : document.getElementById("claim-select").value;
+
+    if (socket) {
+      socket.emit("playCards", { roomId: currentRoom, cards: selectedCards, claim: claimVal });
+    }
+    selectedCards = [];
+    renderHand();
+  };
+
+  // Bluff Challenge
+  document.getElementById("btn-challenge").onclick = function() {
+    if (socket) socket.emit("challenge", { roomId: currentRoom });
+  };
+});
+
+function setupArenaUI(roomCode, tag, isHost) {
+  document.getElementById("display-room-code").innerText = roomCode;
+  document.getElementById("display-game-tag").innerText = tag;
+  document.getElementById("btn-host-start").style.display = isHost ? "inline-block" : "none";
+
+  // Game specific controls
+  var isBluff = (selectedGame === "bluff");
+  document.getElementById("bluff-claim-wrapper").style.display = isBluff ? "inline-block" : "none";
+  document.getElementById("btn-challenge").style.display = isBluff ? "inline-block" : "none";
+  document.getElementById("claim-stat-box").style.display = isBluff ? "inline-block" : "none";
+
+  switchScreen("view-arena");
 }
 
 if (socket) {
   socket.on("yourCards", function(cards) {
-    window.myCards = cards;
-    window.selectedCards = [];
+    myCards = cards;
+    selectedCards = [];
     renderHand();
   });
 
   socket.on("gameState", function(state) {
     document.getElementById("pile-count").innerText = state.pileCount;
     document.getElementById("current-claim").innerText = state.currentClaim || "None";
-    var currentP = state.players[state.currentTurnIndex];
-    document.getElementById("current-turn").innerText = currentP ? currentP.name : "-";
+    
+    var cp = state.players[state.currentTurnIndex];
+    document.getElementById("current-turn").innerText = cp ? cp.name : "-";
 
-    var pList = document.getElementById("players-list");
-    pList.innerHTML = "";
+    var pl = document.getElementById("players-list");
+    pl.innerHTML = "";
     state.players.forEach(function(p) {
       var li = document.createElement("li");
       li.innerText = p.name + " (" + p.cardCount + " cards)";
-      pList.appendChild(li);
+      pl.appendChild(li);
     });
 
     if (state.lastPlay) {
       document.getElementById("action-announcement").innerText = 
-        "👉 " + state.lastPlay.player + " played " + state.lastPlay.cards.length + " card(s) claiming "" + state.lastPlay.claim + """;
+        "👉 " + state.lastPlay.player + " played " + state.lastPlay.cards.length + " card(s) [" + state.lastPlay.claim + "]";
     }
   });
 
   socket.on("timerUpdate", function(data) {
     var bar = document.getElementById("timer-bar");
-    var text = document.getElementById("timer-text");
-    if (!bar || !text) return;
-    text.innerText = data.timeLeft + "s";
-    var percent = (data.timeLeft / data.total) * 100;
-    bar.style.width = percent + "%";
+    var txt = document.getElementById("timer-text");
+    if (!bar || !txt) return;
+
+    txt.innerText = data.timeLeft + "s";
+    var pct = (data.timeLeft / data.total) * 100;
+    bar.style.width = pct + "%";
+
     if (data.timeLeft <= 10) bar.style.backgroundColor = "#ef4444";
-    else if (data.timeLeft <= 20) bar.style.backgroundColor = "#eab308";
+    else if (data.timeLeft <= 20) bar.style.backgroundColor = "#f59e0b";
     else bar.style.backgroundColor = "#22c55e";
   });
 
@@ -189,8 +167,8 @@ if (socket) {
     if (ann) ann.innerText = msg;
   });
 
-  socket.on("gameOver", function(res) {
-    alert("🏆 MATCH OVER! Winner is: " + res.winner);
+  socket.on("gameOver", function(data) {
+    alert("🏆 MATCH OVER! Winner: " + data.winner);
   });
 }
 
@@ -198,25 +176,25 @@ function renderHand() {
   var container = document.getElementById("cards-hand");
   if (!container) return;
   container.innerHTML = "";
-  document.getElementById("hand-count").innerText = window.myCards.length;
+  document.getElementById("hand-count").innerText = myCards.length;
 
-  window.myCards.forEach(function(card) {
-    var cardEl = document.createElement("div");
-    var isRed = card.suit === "♥" || card.suit === "♦";
-    cardEl.className = "card " + (isRed ? "red" : "");
-    cardEl.innerText = card.value + card.suit;
+  myCards.forEach(function(card) {
+    var el = document.createElement("div");
+    var isRed = (card.suit === "♥" || card.suit === "♦");
+    el.className = "card " + (isRed ? "red" : "");
+    el.innerHTML = "<span>" + card.value + "</span><span style="font-size:1.4rem;">" + card.suit + "</span>";
 
-    cardEl.onclick = function() {
-      var idx = window.selectedCards.findIndex(function(c) { return c.value === card.value && c.suit === card.suit; });
+    el.onclick = function() {
+      var idx = selectedCards.findIndex(function(c) { return c.value === card.value && c.suit === card.suit; });
       if (idx > -1) {
-        window.selectedCards.splice(idx, 1);
-        cardEl.classList.remove("selected");
+        selectedCards.splice(idx, 1);
+        el.classList.remove("selected");
       } else {
-        window.selectedCards.push(card);
-        cardEl.classList.add("selected");
+        selectedCards.push(card);
+        el.classList.add("selected");
       }
     };
 
-    container.appendChild(cardEl);
+    container.appendChild(el);
   });
 }

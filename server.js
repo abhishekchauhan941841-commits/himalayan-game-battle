@@ -7,7 +7,7 @@ const mongoose = require("mongoose");
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+const io = new Server(server, { cors: { origin: "*" } });
 
 const PORT = process.env.PORT || 10000;
 const MONGO_URI = process.env.MONGO_URI;
@@ -33,7 +33,7 @@ function createDeck() {
   return deck.sort(() => Math.random() - 0.5);
 }
 
-function sanitizeRoomState(room) {
+function sanitizeState(room) {
   return {
     id: room.id,
     gameType: room.gameType,
@@ -53,12 +53,13 @@ function startTurnTimer(roomId) {
 
   if (room.timer) clearInterval(room.timer);
   room.timeLeft = TURN_TIMEOUT_SEC;
-
   io.to(roomId).emit("timerUpdate", { timeLeft: room.timeLeft, total: TURN_TIMEOUT_SEC });
 
   const currentPlayer = room.players[room.currentTurnIndex];
-  if (currentPlayer && currentPlayer.isBot) {
-    setTimeout(() => { executeBotMove(roomId); }, 2000);
+  if (!currentPlayer) return;
+
+  if (currentPlayer.isBot) {
+    setTimeout(() => { executeBotMove(roomId); }, 1500);
     return;
   }
 
@@ -77,31 +78,27 @@ function handleTimeout(roomId) {
   const room = rooms[roomId];
   if (!room || !room.gameActive) return;
 
-  const currentPlayer = room.players[room.currentTurnIndex];
-  io.to(roomId).emit("gameMessage", "⏰ " + currentPlayer.name + " timed out! Auto-playing random card...");
+  const cp = room.players[room.currentTurnIndex];
+  if (!cp || cp.cards.length === 0) return;
 
-  if (currentPlayer.cards.length > 0) {
-    const randomCardIndex = Math.floor(Math.random() * currentPlayer.cards.length);
-    const playedCard = currentPlayer.cards.splice(randomCardIndex, 1)[0];
-    const claim = room.currentClaim || playedCard.value;
+  io.to(roomId).emit("gameMessage", "⏰ " + cp.name + " timed out! Auto-discarding card...");
+  const randomCard = cp.cards.splice(Math.floor(Math.random() * cp.cards.length), 1)[0];
+  const claim = room.currentClaim || randomCard.value;
 
-    room.pile.push(playedCard);
-    room.lastPlay = { player: currentPlayer.name, cards: [playedCard], claim: claim };
-    room.currentClaim = claim;
+  room.pile.push(randomCard);
+  room.lastPlay = { player: cp.name, cards: [randomCard], claim: claim };
+  room.currentClaim = claim;
 
-    if (!currentPlayer.isBot) {
-      io.to(currentPlayer.id).emit("yourCards", currentPlayer.cards);
-    }
+  if (!cp.isBot) io.to(cp.id).emit("yourCards", cp.cards);
 
-    if (currentPlayer.cards.length === 0) {
-      endGame(roomId, currentPlayer);
-      return;
-    }
-
-    room.currentTurnIndex = (room.currentTurnIndex + 1) % room.players.length;
-    io.to(roomId).emit("gameState", sanitizeRoomState(room));
-    startTurnTimer(roomId);
+  if (cp.cards.length === 0) {
+    endGame(roomId, cp);
+    return;
   }
+
+  room.currentTurnIndex = (room.currentTurnIndex + 1) % room.players.length;
+  io.to(roomId).emit("gameState", sanitizeState(room));
+  startTurnTimer(roomId);
 }
 
 function executeBotMove(roomId) {
@@ -109,33 +106,42 @@ function executeBotMove(roomId) {
   if (!room || !room.gameActive) return;
 
   const bot = room.players[room.currentTurnIndex];
-  if (!bot || !bot.isBot) return;
+  if (!bot || !bot.isBot || bot.cards.length === 0) return;
 
-  if (room.lastPlay && Math.random() < 0.25) {
-    io.to(roomId).emit("gameMessage", bot.name + " is calling BLUFF on " + room.lastPlay.player + "!");
+  // In Bluff mode, Bot sometimes challenges
+  if (room.gameType === "bluff" && room.lastPlay && Math.random() < 0.3) {
+    io.to(roomId).emit("gameMessage", "🤖 " + bot.name + " called BLUFF on " + room.lastPlay.player + "!");
     const lastPlayer = room.players.find(p => p.name === room.lastPlay.player);
     const isBluff = room.lastPlay.cards.some(c => c.value !== room.lastPlay.claim);
-    let loser = isBluff ? lastPlayer : bot;
-    loser.cards.push(...room.pile);
+    let penaltyPlayer = isBluff ? lastPlayer : bot;
+    penaltyPlayer.cards.push(...room.pile);
 
-    if (!loser.isBot) io.to(loser.id).emit("yourCards", loser.cards);
+    if (!penaltyPlayer.isBot) io.to(penaltyPlayer.id).emit("yourCards", penaltyPlayer.cards);
     room.pile = [];
     room.lastPlay = null;
     room.currentClaim = null;
-    io.to(roomId).emit("gameState", sanitizeRoomState(room));
+    io.to(roomId).emit("gameState", sanitizeState(room));
     startTurnTimer(roomId);
     return;
   }
 
-  const claim = room.currentClaim || bot.cards[0].value;
-  const matchingCards = bot.cards.filter(c => c.value === claim);
   let cardsToPlay = [];
+  let claim = "";
 
-  if (matchingCards.length > 0) {
-    cardsToPlay = [matchingCards[0]];
-    bot.cards = bot.cards.filter(c => c !== matchingCards[0]);
-  } else {
+  if (room.gameType === "chudapatti") {
+    // Discard any matching pair or single card
     cardsToPlay = [bot.cards.pop()];
+    claim = cardsToPlay[0].value;
+  } else {
+    // Bluff logic
+    claim = room.currentClaim || bot.cards[0].value;
+    const match = bot.cards.find(c => c.value === claim);
+    if (match) {
+      cardsToPlay = [match];
+      bot.cards = bot.cards.filter(c => c !== match);
+    } else {
+      cardsToPlay = [bot.cards.pop()];
+    }
   }
 
   room.pile.push(...cardsToPlay);
@@ -148,7 +154,30 @@ function executeBotMove(roomId) {
   }
 
   room.currentTurnIndex = (room.currentTurnIndex + 1) % room.players.length;
-  io.to(roomId).emit("gameState", sanitizeRoomState(room));
+  io.to(roomId).emit("gameState", sanitizeState(room));
+  startTurnTimer(roomId);
+}
+
+function dealCardsAndStart(roomId) {
+  const room = rooms[roomId];
+  if (!room || room.players.length < 2) return;
+
+  const deck = createDeck();
+  const perPlayer = Math.floor(deck.length / room.players.length);
+
+  room.players.forEach((p, idx) => {
+    p.cards = deck.slice(idx * perPlayer, (idx + 1) * perPlayer);
+    if (!p.isBot) io.to(p.id).emit("yourCards", p.cards);
+  });
+
+  room.gameActive = true;
+  room.currentTurnIndex = 0; // Human player starts
+  room.pile = [];
+  room.lastPlay = null;
+  room.currentClaim = null;
+
+  io.to(roomId).emit("gameState", sanitizeState(room));
+  io.to(roomId).emit("gameMessage", "Game started! Match cards or lead turn.");
   startTurnTimer(roomId);
 }
 
@@ -160,8 +189,9 @@ function endGame(roomId, winner) {
 }
 
 io.on("connection", (socket) => {
-  socket.on("createOrJoin", ({ roomId, username, mode, gameType }) => {
+  socket.on("joinGame", ({ roomId, username, mode, gameType }) => {
     socket.join(roomId);
+
     if (!rooms[roomId]) {
       rooms[roomId] = {
         id: roomId,
@@ -177,53 +207,49 @@ io.on("connection", (socket) => {
         timeLeft: TURN_TIMEOUT_SEC
       };
 
+      // Add human player first
+      rooms[roomId].players.push({ id: socket.id, name: username || "Player 1", cards: [], isBot: false });
+
       if (mode === "bot") {
-        rooms[roomId].players.push({ id: "bot-1", name: "🤖 Himalayan Bot", cards: [], isBot: true });
+        rooms[roomId].players.push({ id: "bot-ai", name: "🤖 Himalayan AI", cards: [], isBot: true });
+      }
+    } else {
+      const room = rooms[roomId];
+      if (!room.players.some(p => p.id === socket.id)) {
+        room.players.push({ id: socket.id, name: username || "Player", cards: [], isBot: false });
       }
     }
 
     const room = rooms[roomId];
-    if (!room.players.some(p => p.id === socket.id)) {
-      room.players.push({ id: socket.id, name: username, cards: [], isBot: false });
-    }
+    io.to(roomId).emit("gameState", sanitizeState(room));
 
-    io.to(roomId).emit("gameState", sanitizeRoomState(room));
+    // If bot game, start immediately!
+    if (mode === "bot" && !room.gameActive) {
+      setTimeout(() => { dealCardsAndStart(roomId); }, 600);
+    }
   });
 
   socket.on("startGame", (roomId) => {
-    const room = rooms[roomId];
-    if (!room || room.players.length < 2) return;
-
-    const deck = createDeck();
-    const cardsPerPlayer = Math.floor(deck.length / room.players.length);
-
-    room.players.forEach((p, idx) => {
-      p.cards = deck.slice(idx * cardsPerPlayer, (idx + 1) * cardsPerPlayer);
-      if (!p.isBot) io.to(p.id).emit("yourCards", p.cards);
-    });
-
-    room.gameActive = true;
-    room.currentTurnIndex = 0;
-    room.pile = [];
-    room.lastPlay = null;
-    room.currentClaim = null;
-
-    io.to(roomId).emit("gameState", sanitizeRoomState(room));
-    startTurnTimer(roomId);
+    dealCardsAndStart(roomId);
   });
 
   socket.on("playCards", ({ roomId, cards, claim }) => {
     const room = rooms[roomId];
     if (!room || !room.gameActive) return;
+
     const player = room.players[room.currentTurnIndex];
-    if (player.id !== socket.id) return;
+    if (!player || player.id !== socket.id) return;
 
     if (room.timer) clearInterval(room.timer);
 
     player.cards = player.cards.filter(c => !cards.some(rc => rc.suit === c.suit && rc.value === c.value));
     room.pile.push(...cards);
-    room.lastPlay = { player: player.name, cards: cards, claim: claim };
-    room.currentClaim = claim;
+    
+    const declaredClaim = (room.gameType === "chudapatti") ? cards[0].value : (claim || cards[0].value);
+    room.lastPlay = { player: player.name, cards: cards, claim: declaredClaim };
+    room.currentClaim = declaredClaim;
+
+    io.to(player.id).emit("yourCards", player.cards);
 
     if (player.cards.length === 0) {
       endGame(roomId, player);
@@ -231,7 +257,7 @@ io.on("connection", (socket) => {
     }
 
     room.currentTurnIndex = (room.currentTurnIndex + 1) % room.players.length;
-    io.to(roomId).emit("gameState", sanitizeRoomState(room));
+    io.to(roomId).emit("gameState", sanitizeState(room));
     startTurnTimer(roomId);
   });
 
@@ -245,17 +271,17 @@ io.on("connection", (socket) => {
     const lastPlayer = room.players.find(p => p.name === room.lastPlay.player);
     const isBluff = room.lastPlay.cards.some(c => c.value !== room.lastPlay.claim);
 
-    let loser = isBluff ? lastPlayer : challenger;
-    loser.cards.push(...room.pile);
+    let penaltyReceiver = isBluff ? lastPlayer : challenger;
+    penaltyReceiver.cards.push(...room.pile);
 
-    if (!loser.isBot) io.to(loser.id).emit("yourCards", loser.cards);
+    if (!penaltyReceiver.isBot) io.to(penaltyReceiver.id).emit("yourCards", penaltyReceiver.cards);
 
-    io.to(roomId).emit("gameMessage", challenger.name + " challenged " + lastPlayer.name + "! Result: " + (isBluff ? "BLUFF CAUGHT! " + lastPlayer.name + " takes pile." : "LEGIT! " + challenger.name + " takes pile."));
+    io.to(roomId).emit("gameMessage", challenger.name + " called BLUFF! " + (isBluff ? lastPlayer.name + " was caught lying!" : challenger.name + " was wrong!"));
 
     room.pile = [];
     room.lastPlay = null;
     room.currentClaim = null;
-    io.to(roomId).emit("gameState", sanitizeRoomState(room));
+    io.to(roomId).emit("gameState", sanitizeState(room));
     startTurnTimer(roomId);
   });
 
@@ -267,7 +293,7 @@ io.on("connection", (socket) => {
         if (room.timer) clearInterval(room.timer);
         delete rooms[rId];
       } else {
-        io.to(rId).emit("gameState", sanitizeRoomState(room));
+        io.to(rId).emit("gameState", sanitizeState(room));
       }
     }
   });
