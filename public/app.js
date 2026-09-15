@@ -1,8 +1,11 @@
-
 function switchLanguage(lang) {
-  I18N.setLang(lang);
-  document.getElementById("lang-en").classList.toggle("active", lang === "en");
-  document.getElementById("lang-hi").classList.toggle("active", lang === "hi");
+  if (typeof I18N !== "undefined") {
+    I18N.setLang(lang);
+  }
+  const enBtn = document.getElementById("lang-en");
+  const hiBtn = document.getElementById("lang-hi");
+  if (enBtn) enBtn.classList.toggle("active", lang === "en");
+  if (hiBtn) hiBtn.classList.toggle("active", lang === "hi");
 }
 
 const AudioEngine = {
@@ -105,14 +108,18 @@ function getName() {
 
 function selectGame(game) {
   selectedGame = game;
-  document.getElementById("mode-header-title").innerText = (game === "chudapatti" ? "Chudapatti" : "Bluff") + " Game Modes";
+  var title = document.getElementById("mode-header-title");
+  if (title) {
+    title.innerText = (game === "chudapatti" ? "Chudapatti" : "Bluff") + " Game Modes";
+  }
   switchView("view-mode-select");
 }
 
 function startBotMatch() {
   AudioEngine.init();
   var pName = getName();
-  var botCount = document.getElementById("bot-count-select").value;
+  var botSelect = document.getElementById("bot-count-select");
+  var botCount = botSelect ? botSelect.value : "3";
   var botRoom = "BOT-" + Math.random().toString(36).substring(2, 7).toUpperCase();
   currentRoom = botRoom;
   setupArena(botRoom, "Solo vs " + botCount + " Bots (" + (selectedGame === "chudapatti" ? "Chudapatti" : "Bluff") + ")", false);
@@ -142,16 +149,36 @@ function joinRoom() {
 }
 
 function setupArena(roomCode, tag, isHost) {
-  document.getElementById("display-room-code").innerText = roomCode;
-  document.getElementById("display-game-tag").innerText = tag;
-  document.getElementById("btn-host-start").style.display = isHost ? "inline-block" : "none";
+  var rCode = document.getElementById("display-room-code");
+  if (rCode) rCode.innerText = roomCode;
+
+  var gTag = document.getElementById("display-game-tag");
+  if (gTag) gTag.innerText = tag;
+
+  var hStart = document.getElementById("btn-host-start");
+  if (hStart) hStart.style.display = isHost ? "inline-block" : "none";
 
   var isBluff = (selectedGame === "bluff");
-  document.getElementById("bluff-claim-wrapper").style.display = isBluff ? "inline-flex" : "none";
-  document.getElementById("btn-challenge").style.display = isBluff ? "inline-block" : "none";
-  document.getElementById("claim-indicator").style.display = isBluff ? "inline-block" : "none";
-  document.getElementById("suit-indicator").style.display = isBluff ? "none" : "inline-block";
-  document.getElementById("hand-tip-text").innerText = isBluff ? "💡 Tip: 1 से 4 पत्ते सेलेक्ट करके क्लेम के साथ फेंकें!" : "💡 Tip: अपनी बारी आने पर पत्ते पर क्लिक करें!";
+  var bWrap = document.getElementById("bluff-claim-wrapper");
+  if (bWrap) bWrap.style.display = isBluff ? "inline-flex" : "none";
+
+  var bChall = document.getElementById("btn-challenge");
+  if (bChall) bChall.style.display = isBluff ? "inline-block" : "none";
+
+  var cInd = document.getElementById("claim-indicator");
+  if (cInd) cInd.style.display = isBluff ? "inline-block" : "none";
+
+  var sInd = document.getElementById("suit-indicator");
+  if (sInd) sInd.style.display = isBluff ? "none" : "inline-block";
+
+  var tipEl = document.getElementById("hand-tip-text");
+  if (tipEl) {
+    if (typeof I18N !== "undefined") {
+      tipEl.innerText = isBluff ? I18N.t("tipBluff") : I18N.t("tipChuda");
+    } else {
+      tipEl.innerText = isBluff ? "💡 Tip: Select 1 to 4 cards and play with claim value!" : "💡 Tip: Click on a card during your turn to play it!";
+    }
+  }
 
   switchView("view-arena");
 }
@@ -188,10 +215,11 @@ function createFaceDownCard() {
 
 function sendCardPlay(cardList) {
   if (!cardList || cardList.length === 0) {
-    showToast(I18N.t("selectCardFirst"));
+    showToast(typeof I18N !== "undefined" ? I18N.t("selectCardFirst") : "Please select a card first!");
     return;
   }
-  var claimVal = (selectedGame === "chudapatti") ? cardList[0].value : document.getElementById("claim-select").value;
+  var claimSelect = document.getElementById("claim-select");
+  var claimVal = (selectedGame === "chudapatti") ? cardList[0].value : (claimSelect ? claimSelect.value : "2");
   if (socket) {
     socket.emit("playCards", { roomId: currentRoom, cards: cardList, claim: claimVal });
   }
@@ -201,38 +229,68 @@ function sendCardPlay(cardList) {
 }
 
 window.addEventListener("DOMContentLoaded", function() {
-  switchLanguage(I18N.currentLang);
-  document.getElementById("card-chudapatti").onclick = function() { selectGame("chudapatti"); };
-  document.getElementById("btn-chuda-action").onclick = function(e) { e.stopPropagation(); selectGame("chudapatti"); };
+  if (typeof I18N !== "undefined") {
+    switchLanguage(I18N.currentLang);
+  }
 
-  document.getElementById("card-bluff").onclick = function() { selectGame("bluff"); };
-  document.getElementById("btn-bluff-action").onclick = function(e) { e.stopPropagation(); selectGame("bluff"); };
+  var cChuda = document.getElementById("card-chudapatti");
+  if (cChuda) cChuda.onclick = function() { selectGame("chudapatti"); };
 
-  document.getElementById("btn-back-to-games").onclick = function() { switchView("view-game-select"); };
-  document.getElementById("btn-back-to-modes").onclick = function() { switchView("view-mode-select"); };
+  var bChuda = document.getElementById("btn-chuda-action");
+  if (bChuda) bChuda.onclick = function(e) { e.stopPropagation(); selectGame("chudapatti"); };
 
-  document.getElementById("btn-bot-action").onclick = startBotMatch;
+  var cBluff = document.getElementById("card-bluff");
+  if (cBluff) cBluff.onclick = function() { selectGame("bluff"); };
 
-  document.getElementById("card-mode-multi").onclick = function() { switchView("view-multi-lobby"); };
-  document.getElementById("btn-multi-action").onclick = function(e) { e.stopPropagation(); switchView("view-multi-lobby"); };
+  var bBluff = document.getElementById("btn-bluff-action");
+  if (bBluff) bBluff.onclick = function(e) { e.stopPropagation(); selectGame("bluff"); };
 
-  document.getElementById("card-create-room").onclick = createRoom;
-  document.getElementById("btn-create-room-act").onclick = function(e) { e.stopPropagation(); createRoom(); };
-  document.getElementById("btn-join-room-act").onclick = joinRoom;
+  var bBackGames = document.getElementById("btn-back-to-games");
+  if (bBackGames) bBackGames.onclick = function() { switchView("view-game-select"); };
 
-  document.getElementById("btn-host-start").onclick = function() {
-    if (socket) socket.emit("startGame", currentRoom);
-    this.style.display = "none";
-  };
+  var bBackModes = document.getElementById("btn-back-to-modes");
+  if (bBackModes) bBackModes.onclick = function() { switchView("view-mode-select"); };
 
-  document.getElementById("btn-play-cards").onclick = function() {
-    sendCardPlay(selectedCards);
-  };
+  var bBot = document.getElementById("btn-bot-action");
+  if (bBot) bBot.onclick = startBotMatch;
 
-  document.getElementById("btn-challenge").onclick = function() {
-    AudioEngine.playChallengeSound();
-    if (socket) socket.emit("challenge", { roomId: currentRoom });
-  };
+  var cMulti = document.getElementById("card-mode-multi");
+  if (cMulti) cMulti.onclick = function() { switchView("view-multi-lobby"); };
+
+  var bMulti = document.getElementById("btn-multi-action");
+  if (bMulti) bMulti.onclick = function(e) { e.stopPropagation(); switchView("view-multi-lobby"); };
+
+  var cCreate = document.getElementById("card-create-room");
+  if (cCreate) cCreate.onclick = createRoom;
+
+  var bCreate = document.getElementById("btn-create-room-act");
+  if (bCreate) bCreate.onclick = function(e) { e.stopPropagation(); createRoom(); };
+
+  var bJoin = document.getElementById("btn-join-room-act");
+  if (bJoin) bJoin.onclick = joinRoom;
+
+  var bHost = document.getElementById("btn-host-start");
+  if (bHost) {
+    bHost.onclick = function() {
+      if (socket) socket.emit("startGame", currentRoom);
+      this.style.display = "none";
+    };
+  }
+
+  var bPlay = document.getElementById("btn-play-cards");
+  if (bPlay) {
+    bPlay.onclick = function() {
+      sendCardPlay(selectedCards);
+    };
+  }
+
+  var bChall = document.getElementById("btn-challenge");
+  if (bChall) {
+    bChall.onclick = function() {
+      AudioEngine.playChallengeSound();
+      if (socket) socket.emit("challenge", { roomId: currentRoom });
+    };
+  }
 });
 
 if (socket) {
@@ -248,12 +306,16 @@ if (socket) {
 
   socket.on("gameState", function(state) {
     currentPlayersState = state.players;
-    document.getElementById("lead-suit-display").innerText = state.leadSuit || "कोई नहीं";
-    document.getElementById("current-claim").innerText = state.currentClaim || "None";
+    var sDisp = document.getElementById("lead-suit-display");
+    if (sDisp) sDisp.innerText = state.leadSuit || (typeof I18N !== "undefined" ? I18N.t("noneText") : "None");
+
+    var cDisp = document.getElementById("current-claim");
+    if (cDisp) cDisp.innerText = state.currentClaim || (typeof I18N !== "undefined" ? I18N.t("noneText") : "None");
     
     var cp = state.players[state.currentTurnIndex];
     var turnText = cp ? cp.name : "-";
-    document.getElementById("current-turn").innerText = turnText;
+    var tDisp = document.getElementById("current-turn");
+    if (tDisp) tDisp.innerText = turnText;
 
     var myName = getName();
     var wasMyTurn = isMyTurn;
@@ -261,58 +323,60 @@ if (socket) {
     if (!wasMyTurn && isMyTurn) AudioEngine.playTurnBell();
 
     var layer = document.getElementById("arena-players-layer");
-    layer.innerHTML = "";
+    if (layer) {
+      layer.innerHTML = "";
 
-    var totalPlayers = state.players.length;
-    var myIndex = state.players.findIndex(function(p) { return p.name === myName; });
-    if (myIndex === -1) myIndex = 0;
+      var totalPlayers = state.players.length;
+      var myIndex = state.players.findIndex(function(p) { return p.name === myName; });
+      if (myIndex === -1) myIndex = 0;
 
-    state.players.forEach(function(p, i) {
-      var relativeIdx = (i - myIndex + totalPlayers) % totalPlayers;
-      var angle = (Math.PI / 2) + (relativeIdx * (2 * Math.PI / totalPlayers));
+      state.players.forEach(function(p, i) {
+        var relativeIdx = (i - myIndex + totalPlayers) % totalPlayers;
+        var angle = (Math.PI / 2) + (relativeIdx * (2 * Math.PI / totalPlayers));
 
-      var xPercent = 50 + 44 * Math.cos(angle);
-      var yPercent = 50 + 42 * Math.sin(angle);
+        var xPercent = 50 + 44 * Math.cos(angle);
+        var yPercent = 50 + 42 * Math.sin(angle);
 
-      var isCurrent = (cp && cp.name === p.name);
-      var pod = document.createElement("div");
-      pod.className = "player-pod " + (isCurrent ? "active-turn" : "");
-      pod.id = "pod-player-" + i;
-      pod.style.left = xPercent + "%";
-      pod.style.top = yPercent + "%";
+        var isCurrent = (cp && cp.name === p.name);
+        var pod = document.createElement("div");
+        pod.className = "player-pod " + (isCurrent ? "active-turn" : "");
+        pod.id = "pod-player-" + i;
+        pod.style.left = xPercent + "%";
+        pod.style.top = yPercent + "%";
 
-      var avatarDiv = document.createElement("div");
-      avatarDiv.className = "pod-avatar";
-      avatarDiv.innerText = p.isBot ? "🤖" : "👤";
+        var avatarDiv = document.createElement("div");
+        avatarDiv.className = "pod-avatar";
+        avatarDiv.innerText = p.isBot ? "🤖" : "👤";
 
-      var detailsDiv = document.createElement("div");
-      detailsDiv.className = "pod-details";
+        var detailsDiv = document.createElement("div");
+        detailsDiv.className = "pod-details";
 
-      var nameSpan = document.createElement("span");
-      nameSpan.className = "pod-name";
-      nameSpan.innerText = p.name;
+        var nameSpan = document.createElement("span");
+        nameSpan.className = "pod-name";
+        nameSpan.innerText = p.name;
 
-      var metaSpan = document.createElement("span");
-      metaSpan.className = "pod-meta";
-      metaSpan.innerHTML = "<strong>" + p.cardCount + "</strong> पत्ते" + (p.isSafe ? " (" + p.rankTitle + ")" : "");
+        var metaSpan = document.createElement("span");
+        metaSpan.className = "pod-meta";
+        metaSpan.innerHTML = "<strong>" + p.cardCount + "</strong> cards" + (p.isSafe ? " (" + p.rankTitle + ")" : "");
 
-      detailsDiv.appendChild(nameSpan);
-      detailsDiv.appendChild(metaSpan);
+        detailsDiv.appendChild(nameSpan);
+        detailsDiv.appendChild(metaSpan);
 
-      pod.appendChild(avatarDiv);
-      pod.appendChild(detailsDiv);
-      layer.appendChild(pod);
-    });
+        pod.appendChild(avatarDiv);
+        pod.appendChild(detailsDiv);
+        layer.appendChild(pod);
+      });
+    }
 
     var feltZone = document.getElementById("trick-throw-zone");
+    if (!feltZone) return;
 
-    // Chudapatti trick render
     if (state.gameType === "chudapatti") {
       if (!state.currentTrick || state.currentTrick.length === 0) {
         var existingCards = feltZone.querySelectorAll(".thrown-card-pod");
         if (existingCards.length > 0) {
           existingCards.forEach(function(c) { c.classList.add("sweep-out"); });
-          setTimeout(() => { feltZone.innerHTML = ""; }, 400);
+          setTimeout(function() { feltZone.innerHTML = ""; }, 400);
         } else {
           feltZone.innerHTML = "";
         }
@@ -337,7 +401,6 @@ if (socket) {
         feltZone.appendChild(box);
       });
     } else {
-      // BLUFF: Render Face-down mystery cards in center with count & claim
       feltZone.innerHTML = "";
       if (state.pileCount > 0) {
         var pileBox = document.createElement("div");
@@ -371,12 +434,14 @@ if (socket) {
     var ann = document.getElementById("action-announcement");
     if (ann) ann.innerText = msg;
 
-    if (msg.includes("कट मारा") || msg.includes("सारे पत्ते उनको उठाने पड़े") || msg.includes("BLUFF पकड़ा")) {
+    if (msg.includes("कट मारा") || msg.includes("सारे पत्ते उनको उठाने पड़े") || msg.includes("CUT") || msg.includes("BLUFF")) {
       AudioEngine.playCutHorn();
       var alertBanner = document.getElementById("cut-alert-box");
-      alertBanner.style.display = "block";
-      alertBanner.innerText = msg.includes("BLUFF") ? "🔥 BLUFF CHALLENGE!" : "💥 CUT LAGA!";
-      setTimeout(function() { alertBanner.style.display = "none"; }, 2500);
+      if (alertBanner) {
+        alertBanner.style.display = "block";
+        alertBanner.innerText = msg.includes("BLUFF") ? "🔥 BLUFF CHALLENGE!" : "💥 CUT LAGA!";
+        setTimeout(function() { alertBanner.style.display = "none"; }, 2500);
+      }
 
       if (currentPlayersState && currentPlayersState.length > 0) {
         currentPlayersState.forEach(function(p, idx) {
@@ -396,8 +461,8 @@ if (socket) {
   });
 
   socket.on("gameOver", function(data) {
-    var res = I18N.t("matchOver") + "\n\n";
-    if (data.winners && data.winners.length > 0) res += I18N.t("winner1st") + " " + data.winners[0] + "\n";
+    var res = (typeof I18N !== "undefined" ? I18N.t("matchOver") : "🏆 MATCH OVER!") + "\n\n";
+    if (data.winners && data.winners.length > 0) res += (typeof I18N !== "undefined" ? I18N.t("winner1st") : "🥇 1st Winner:") + " " + data.winners[0] + "\n";
     if (data.loser) res += (data.gameType === "chudapatti" ? "❌ चुड़ा: " : "❌ Loser: ") + data.loser + "\n";
     alert(res);
   });
@@ -407,7 +472,9 @@ function renderHand() {
   var box = document.getElementById("cards-hand");
   if (!box) return;
   box.innerHTML = "";
-  document.getElementById("hand-count").innerText = myCards.length;
+
+  var hCount = document.getElementById("hand-count");
+  if (hCount) hCount.innerText = myCards.length;
 
   myCards.forEach(function(card) {
     var el = createCardElement(card);
@@ -422,17 +489,16 @@ function renderHand() {
           selectedCards = [card];
           document.querySelectorAll("#cards-hand .card").forEach(function(c) { c.classList.remove("selected"); });
           el.classList.add("selected");
-          showToast(I18N.t("notYourTurn"));
+          showToast(typeof I18N !== "undefined" ? I18N.t("notYourTurn") : "Not your turn yet!");
         }
       } else {
-        // Bluff: Multi-card selection (up to 4 cards)
         var idx = selectedCards.findIndex(function(c) { return c.value === card.value && c.suit === card.suit; });
         if (idx > -1) {
           selectedCards.splice(idx, 1);
           el.classList.remove("selected");
         } else {
           if (selectedCards.length >= 4) {
-            showToast(I18N.t("maxBluffCards"));
+            showToast(typeof I18N !== "undefined" ? I18N.t("maxBluffCards") : "Max 4 cards at once!");
             return;
           }
           selectedCards.push(card);
