@@ -96,7 +96,7 @@ function startTurnTimer(roomId) {
   if (currentPlayer.isBot) {
     setTimeout(() => {
       executeBotTurn(roomId);
-    }, 1000);
+    }, 900);
     return;
   }
 
@@ -123,7 +123,7 @@ function handleTimeout(roomId) {
   const cp = room.players[room.currentTurnIndex];
   if (!cp || cp.isSafe || cp.cards.length === 0) return;
 
-  io.to(roomId).emit("gameMessage", `⏰ ${cp.name} का टाइम खत्म!`);
+  io.to(roomId).emit("gameMessage", `⏰ ${cp.name} का टाइम खत्म! ऑटो पत्ता चला गया।`);
 
   let cardToPlay;
   if (room.gameType === "chudapatti" && room.leadSuit) {
@@ -136,7 +136,6 @@ function handleTimeout(roomId) {
   playTurn(roomId, cp.id, [cardToPlay], cardToPlay.value);
 }
 
-// SMART COMPETITIVE BOT AI
 function executeBotTurn(roomId) {
   const room = rooms[roomId];
   if (!room || !room.gameActive || room.isResolving) return;
@@ -156,54 +155,22 @@ function executeBotTurn(roomId) {
     return;
   }
 
-  // --- SMART CHUDAPATTI AI ---
   let cardToPlay;
 
-  // 1. First Turn Ace of Spades requirement
   if (room.isFirstTurn) {
     const aceSpade = bot.cards.find(c => c.suit === "♠" && c.value === "A");
     cardToPlay = aceSpade || bot.cards[0];
-  }
-  // 2. Following Lead Suit
-  else if (room.leadSuit) {
+  } else if (room.leadSuit) {
     const leadSuitCards = bot.cards.filter(c => c.suit === room.leadSuit);
 
     if (leadSuitCards.length > 0) {
-      // Sort lowest to highest
       leadSuitCards.sort((a, b) => CARD_RANKS[a.value] - CARD_RANKS[b.value]);
-
-      // Calculate current highest card in trick of lead suit
-      let currentHighestLead = -1;
-      room.currentTrick.forEach(t => {
-        if (t.card.suit === room.leadSuit) {
-          const rank = CARD_RANKS[t.card.value];
-          if (rank > currentHighestLead) currentHighestLead = rank;
-        }
-      });
-
-      // If playing last in trick, play just enough to win or dump lowest
-      const isLastPlayer = (room.currentTrick.length === getActivePlayers(room).length - 1);
-      if (isLastPlayer) {
-        // Can dump lowest safely because round will clear
-        cardToPlay = leadSuitCards[0];
-      } else {
-        // Play lowest safe card that doesn't risk getting caught if someone cuts later
-        cardToPlay = leadSuitCards[0];
-      }
+      cardToPlay = leadSuitCards[0];
     } else {
-      // CUT / THULLA OPPORTUNITY:
-      // Dump the most dangerous high rank card from longest off-suit
       const offCards = [...bot.cards].sort((a, b) => CARD_RANKS[b.value] - CARD_RANKS[a.value]);
-      cardToPlay = offCards[0]; // Throw highest card (Aces/Kings) as punishment
+      cardToPlay = offCards[0];
     }
-  }
-  // 3. Leading A New Trick
-  else {
-    // Lead a suit where bot has low/safe cards to shed safely
-    const suitCounts = { "♠": 0, "♥": 0, "♦": 0, "♣": 0 };
-    bot.cards.forEach(c => suitCounts[c.suit]++);
-
-    // Find suit with few cards to exhaust it, or lowest card
+  } else {
     const sortedHand = [...bot.cards].sort((a, b) => CARD_RANKS[a.value] - CARD_RANKS[b.value]);
     cardToPlay = sortedHand[0];
   }
@@ -293,10 +260,18 @@ function nextTurnIndex(room) {
 
 function playTurn(roomId, socketId, cards, claim) {
   const room = rooms[roomId];
-  if (!room || !room.gameActive || room.isResolving) return;
+  if (!room || !room.gameActive) return;
 
   const player = room.players[room.currentTurnIndex];
-  if (!player || player.id !== socketId || player.isSafe) return;
+  if (!player || player.id !== socketId || player.isSafe) {
+    io.to(socketId).emit("turnError", "अभी आपकी चाल नहीं है!");
+    return;
+  }
+
+  if (room.isResolving) {
+    io.to(socketId).emit("turnError", "पिछली चाल प्रोसेस हो रही है, 1 सेकंड रुकें!");
+    return;
+  }
 
   const playedCard = cards[0];
   if (!playedCard) return;
@@ -304,7 +279,7 @@ function playTurn(roomId, socketId, cards, claim) {
   if (room.gameType === "chudapatti") {
     if (room.isFirstTurn) {
       if (playedCard.suit !== "♠" || playedCard.value !== "A") {
-        io.to(player.id).emit("gameMessage", "❌ पहली चाल में ♠A (हुकुम का इक्का) चलना अनिवार्य है!");
+        io.to(player.id).emit("turnError", "❌ पहली चाल में ♠A (हुकुम का इक्का) चलना अनिवार्य है!");
         return;
       }
       room.isFirstTurn = false;
@@ -312,7 +287,7 @@ function playTurn(roomId, socketId, cards, claim) {
 
     const hasLeadSuit = player.cards.some(c => c.suit === room.leadSuit);
     if (room.leadSuit && playedCard.suit !== room.leadSuit && hasLeadSuit) {
-      io.to(player.id).emit("gameMessage", `❌ आपके पास ${room.leadSuit} मौजूद है, आपको वही चलना होगा!`);
+      io.to(player.id).emit("turnError", `❌ आपके पास ${room.leadSuit} मौजूद है, आपको वही चलना होगा!`);
       return;
     }
 
@@ -380,7 +355,7 @@ function playTurn(roomId, socketId, cards, claim) {
       return;
     }
 
-    // ROUND COMPLETE CONDITION
+    // ROUND COMPLETE
     const activePlayers = getActivePlayers(room);
     if (room.currentTrick.length >= activePlayers.length) {
       room.isResolving = true;
@@ -418,7 +393,6 @@ function playTurn(roomId, socketId, cards, claim) {
       return;
     }
 
-    // Normal switch
     room.currentTurnIndex = nextTurnIndex(room);
     io.to(roomId).emit("gameState", sanitizeState(room));
     startTurnTimer(roomId);
@@ -536,7 +510,7 @@ io.on("connection", (socket) => {
     io.to(roomId).emit("gameState", sanitizeState(room));
 
     if (mode === "bot" && !room.gameActive) {
-      setTimeout(() => { dealAndStart(roomId); }, 600);
+      setTimeout(() => { dealAndStart(roomId); }, 500);
     }
   });
 
@@ -567,5 +541,5 @@ io.on("connection", (socket) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`Himalayan Arena Online on Port ${PORT}`);
+  console.log(`Himalayan Arena running on Port ${PORT}`);
 });
