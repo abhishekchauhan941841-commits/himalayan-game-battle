@@ -127,7 +127,7 @@ function handleTimeout(roomId) {
   const cp = room.players[room.currentTurnIndex];
   if (!cp || cp.isSafe || cp.cards.length === 0) return;
 
-  io.to(roomId).emit("gameMessage", `⏰ ${cp.name} का टाइम खत्म! ऑटो पत्ता चला गया।`);
+  io.to(roomId).emit("gameMessage", `⏰ ${cp.name}'s time expired! Auto-played card.`);
 
   let cardToPlay;
   if (room.gameType === "chudapatti" && room.leadSuit) {
@@ -212,15 +212,18 @@ function dealAndStart(roomId) {
     });
     room.currentTurnIndex = starterIndex;
     const starter = room.players[starterIndex];
-    io.to(roomId).emit("gameMessage", `🃏 मैच शुरू! ${starter.name} के पास ♠A (हुकुम का इक्का) है, पहली चाल उनकी है।`);
+    io.to(roomId).emit("gameMessage", `🃏 Match started! ${starter.name} holds ♠A, first turn is theirs.`);
   } else {
     room.isFirstTurn = false;
     room.currentTurnIndex = 0;
-    io.to(roomId).emit("gameMessage", "🎭 Bluff मैच शुरू! पहली चाल चलें।");
+    io.to(roomId).emit("gameMessage", "🎭 Bluff Match Started! First player make your move.");
   }
 
+  // Send cards immediately to all real sockets
   room.players.forEach(p => {
-    if (!p.isBot && p.id) io.to(p.id).emit("yourCards", p.cards);
+    if (!p.isBot && p.id) {
+      io.to(p.id).emit("yourCards", p.cards);
+    }
   });
 
   io.to(roomId).emit("gameState", sanitizeState(room));
@@ -234,7 +237,7 @@ function checkPlayerVictory(roomId, player) {
     const winRank = room.winners.length + 1;
     player.rankTitle = `${winRank}st Winner`;
     room.winners.push(player.name);
-    io.to(roomId).emit("gameMessage", `🎉 ${player.name} के सारे पत्ते खत्म! वो safe होकर ${player.rankTitle} बने!`);
+    io.to(roomId).emit("gameMessage", `🎉 ${player.name} is safe as ${player.rankTitle}!`);
 
     const remaining = getActivePlayers(room);
     if (remaining.length <= 1) {
@@ -267,12 +270,12 @@ function playTurn(roomId, playerIdentifier, cards, claim) {
   const player = room.players[room.currentTurnIndex];
   if (!player || (player.name !== playerIdentifier && player.id !== playerIdentifier) || player.isSafe) {
     const target = room.players.find(p => p.name === playerIdentifier || p.id === playerIdentifier);
-    if (target && target.id) io.to(target.id).emit("turnError", "अभी आपकी चाल नहीं है!");
+    if (target && target.id) io.to(target.id).emit("turnError", "Not your turn yet!");
     return;
   }
 
   if (room.isResolving) {
-    if (player.id) io.to(player.id).emit("turnError", "पिछली चाल प्रोसेस हो रही है, 1 सेकंड रुकें!");
+    if (player.id) io.to(player.id).emit("turnError", "Previous turn is resolving, please wait!");
     return;
   }
 
@@ -282,7 +285,7 @@ function playTurn(roomId, playerIdentifier, cards, claim) {
   if (room.gameType === "chudapatti") {
     if (room.isFirstTurn) {
       if (playedCard.suit !== "♠" || playedCard.value !== "A") {
-        if (player.id) io.to(player.id).emit("turnError", "❌ पहली चाल में ♠A (हुकुम का इक्का) चलना अनिवार्य है!");
+        if (player.id) io.to(player.id).emit("turnError", "❌ First turn must play ♠A (हुकुम का इक्का)!");
         return;
       }
       room.isFirstTurn = false;
@@ -290,7 +293,7 @@ function playTurn(roomId, playerIdentifier, cards, claim) {
 
     const hasLeadSuit = player.cards.some(c => c.suit === room.leadSuit);
     if (room.leadSuit && playedCard.suit !== room.leadSuit && hasLeadSuit) {
-      if (player.id) io.to(player.id).emit("turnError", `❌ आपके पास ${room.leadSuit} मौजूद है, आपको वही चलना होगा!`);
+      if (player.id) io.to(player.id).emit("turnError", `❌ You have ${room.leadSuit}, you must follow suit!`);
       return;
     }
 
@@ -316,7 +319,7 @@ function playTurn(roomId, playerIdentifier, cards, claim) {
 
     if (playedCard.suit !== room.leadSuit) {
       room.isResolving = true;
-      io.to(roomId).emit("gameMessage", `💥 ${player.name} ने कट मारा (${playedCard.value}${playedCard.suit})!`);
+      io.to(roomId).emit("gameMessage", `💥 ${player.name} executed a CUT (${playedCard.value}${playedCard.suit})!`);
       io.to(roomId).emit("gameState", sanitizeState(room));
 
       let highestVal = -1;
@@ -339,7 +342,7 @@ function playTurn(roomId, playerIdentifier, cards, claim) {
         penaltyPlayer.cards.push(...penaltyCards, ...room.pile);
         room.pile = [];
 
-        io.to(roomId).emit("gameMessage", `🚨 ${penaltyPlayer.name} का ${room.leadSuit} सबसे बड़ा था, सारे पत्ते उनको उठाने पड़े!`);
+        io.to(roomId).emit("gameMessage", `🚨 ${penaltyPlayer.name} had the highest ${room.leadSuit}, they took all cards!`);
         if (!penaltyPlayer.isBot && penaltyPlayer.id) io.to(penaltyPlayer.id).emit("yourCards", penaltyPlayer.cards);
 
         room.currentTrick = [];
@@ -360,7 +363,7 @@ function playTurn(roomId, playerIdentifier, cards, claim) {
     const activePlayers = getActivePlayers(room);
     if (room.currentTrick.length >= activePlayers.length) {
       room.isResolving = true;
-      io.to(roomId).emit("gameMessage", `✨ चाल पूरी हुई! पत्ते साफ़ हो रहे हैं...`);
+      io.to(roomId).emit("gameMessage", `✨ Trick finished! Clearing cards...`);
       io.to(roomId).emit("gameState", sanitizeState(room));
 
       let highestVal = -1;
@@ -377,7 +380,7 @@ function playTurn(roomId, playerIdentifier, cards, claim) {
         if (!rooms[roomId] || !room.gameActive) return;
         room.pile.push(...room.currentTrick.map(t => t.card));
         const winner = room.players[trickWinnerIndex];
-        io.to(roomId).emit("gameMessage", `👑 ${winner.name} का पत्ता सबसे बड़ा था! अगली चाल उनकी है।`);
+        io.to(roomId).emit("gameMessage", `👑 ${winner.name} won the trick!`);
 
         room.currentTrick = [];
         room.leadSuit = null;
@@ -433,7 +436,7 @@ function handleChallenge(roomId, playerIdentifier) {
 
   if (!penaltyReceiver.isBot && penaltyReceiver.id) io.to(penaltyReceiver.id).emit("yourCards", penaltyReceiver.cards);
 
-  io.to(roomId).emit("gameMessage", `🔥 ${challenger.name} ने BLUFF पकड़ा! ${isBluff ? accused.name + " झूठ बोल रहा था!" : challenger.name + " का शक गलत था!"}`);
+  io.to(roomId).emit("gameMessage", `🔥 ${challenger.name} called BLUFF! ${isBluff ? accused.name + " was lying!" : challenger.name + " was wrong!"}`);
 
   room.pile = [];
   room.lastPlay = null;
@@ -517,14 +520,9 @@ io.on("connection", (socket) => {
     const room = rooms[roomId];
     io.to(roomId).emit("gameState", sanitizeState(room));
 
-    if (mode === "bot" && !room.gameActive) {
-      setTimeout(() => { dealAndStart(roomId); }, 500);
-    } else if (room.gameActive && !room.isResolving) {
-      const cp = room.players[room.currentTurnIndex];
-      if (cp && cp.isBot) {
-        clearTimeout(room.botActionTimeout);
-        room.botActionTimeout = setTimeout(() => { executeBotTurn(roomId); }, 1500);
-      }
+    // Deal instantly when bot match is created
+    if (mode === "bot") {
+      dealAndStart(roomId);
     }
   });
 
@@ -551,8 +549,7 @@ io.on("connection", (socket) => {
   socket.on("disconnect", () => {
     for (let rId in rooms) {
       const room = rooms[rId];
-      const player = room.players.find(p => p.id === socket.id);
-      if (player && !room.gameActive) {
+      if (!room.gameActive) {
         room.players = room.players.filter(p => p.id !== socket.id);
       }
       if (room.players.length === 0 || (room.isBotGame && room.players.every(p => p.isBot && !room.gameActive))) {
